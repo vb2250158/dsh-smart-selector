@@ -1,5 +1,7 @@
 # Upgrade to Smart Selector 0.2.0
 
+Home or command-line overlays may reject configuration edits. Rejected writes display an unsaved error and retain the draft. Update the overriding configuration before saving; rejection never counts as a successful save.
+
 ## Change
 
 The repository and package move from `dsh-jev-context-gate` to [`dsh-smart-selector`](https://github.com/vb2250158/dsh-smart-selector). The UI title becomes Smart selector. Existing versions remain available from the old repository; subsequent releases use the new repository.

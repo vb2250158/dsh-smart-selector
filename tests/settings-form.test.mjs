@@ -35,6 +35,14 @@ test('JSON settings retain rule validation and shared revision-fenced writes', a
   assert.equal(listeners.size, 0);
 });
 
+test('rejected writes remain failures instead of appearing saved', async () => {
+  const form = { mutate: async () => false, set: async () => false, unset: async () => false };
+  const settings = createSettingsForm(form, {});
+  for (const operation of [() => settings.mutate([], 3), () => settings.set('enabled', false), () => settings.unset('provider')]) {
+    await assert.rejects(operation, /设置未保存/);
+  }
+});
+
 test('remote memory preferences remain unavailable to Host rule editing', () => {
   const base = { status: 'unavailable', mode: 'memory', writable: false };
   const form = { getSnapshot: () => base };

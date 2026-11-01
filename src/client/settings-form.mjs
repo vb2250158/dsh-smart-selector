@@ -4,10 +4,14 @@ import { CONFIG_ENTRY_ID } from '../identity.mjs';
 /** Decode rule transforms locally while retaining DSH's ordered, revision-fenced writes.
  * @param form Shared DSH form for the plugin entry.
  * @param mirror Shared Host settings mirror.
- * @returns Rule settings form with the plugin's complete validation.
+ * @returns Rule settings form with complete validation and rejected writes reported as errors.
  */
 export function createSettingsForm(form, mirror) {
   let previousForm, previousMirror, snapshot;
+  const requireSaved = async operation => {
+    if (!await operation) throw new Error('设置未保存，请重新读取配置并检查是否存在覆盖补丁。');
+    return true;
+  };
   return {
     getSnapshot() {
       const base = form.getSnapshot();
@@ -34,8 +38,8 @@ export function createSettingsForm(form, mirror) {
       const offMirror = mirror.subscribe(listener);
       return () => { offForm(); offMirror(); };
     },
-    mutate: (ops, revision) => form.mutate(ops, revision),
-    set: (field, value) => form.set(field, value),
-    unset: field => form.unset(field),
+    mutate: (ops, revision) => requireSaved(form.mutate(ops, revision)),
+    set: (field, value) => requireSaved(form.set(field, value)),
+    unset: field => requireSaved(form.unset(field)),
   };
 }

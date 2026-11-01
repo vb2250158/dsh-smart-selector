@@ -2,6 +2,8 @@
 
 ## 0.2.0
 
+- Rejected settings writes remain visible failures; rule drafts are not marked saved when a Home patch or revision guard refuses the update.
+
 - 新仓库与包名为 `dsh-smart-selector`，界面统一称为“智能选择器 / Smart selector”；旧仓库继续提供原版本。
 - 保留配置入口 `dsh-jev-context-gate`、历史事件与来源身份。迁移只替换插件包和入口 `name`，保留规则、开关、判定模型及普通文本模型。
 - 扩展服务新增 `smartSelector`，原 `jev` 名称指向同一服务；HTTP 接口使用新前缀并兼容旧前缀。
