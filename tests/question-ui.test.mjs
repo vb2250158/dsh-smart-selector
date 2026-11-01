@@ -36,7 +36,7 @@ const rule = { id: 'rule-one', enabled: true, title: 'Rule', description: '', ph
   options: [{ id: 'yes', label: 'Yes', action: { type: 'inject-context', text: 'kept' } }, { id: 'no', label: 'No', action: { type: 'none', text: '' } }] };
 
 test('changing question type preserves configured option identities and actions', async () => {
-  const render = await loadComponent('JevRuleEditor'); let changed;
+  const render = await loadComponent('SmartSelectorRuleEditor'); let changed;
   const tree = render({ rule, editing: true, writable: true, canSave: true, update: value => { changed = value; } });
   const picker = nodes(tree).find(node => node.type?.name === 'QuestionTypePicker');
   assert.equal(picker.props.value, 'choice');
@@ -49,7 +49,7 @@ test('changing question type preserves configured option identities and actions'
 });
 
 test('switching a multi-option rule to yes/no retains its options and prevents save', async () => {
-  const render = await loadComponent('JevRuleEditor');
+  const render = await loadComponent('SmartSelectorRuleEditor');
   const current = { ...rule, questionType: 'noul', options: [...rule.options, { id: 'third', label: 'Third', action: { type: 'none', text: '' } }] };
   const tree = render({ rule: current, editing: true, writable: true, canSave: true });
   const modal = nodes(tree).find(node => node.type === 'Modal');
@@ -61,7 +61,7 @@ test('switching a multi-option rule to yes/no retains its options and prevents s
 
 test('the test page sends each chosen question type through the same endpoint', async () => {
   const requests = [];
-  const render = await loadComponent('JevTestPage', { fetch: async (url, request) => {
+  const render = await loadComponent('SmartSelectorTestPage', { fetch: async (url, request) => {
     requests.push({ url, body: JSON.parse(request.body) });
     return { ok: true, json: async () => ({ ok: false, error: 'fixture' }) };
   } });
@@ -76,13 +76,13 @@ test('the test page sends each chosen question type through the same endpoint', 
     nodes(tree).find(node => node.type === 'Button' && node.props.variant === 'primary').props.onClick();
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(requests.at(-1).body.questionType, questionType);
-    assert.equal(requests.at(-1).url, '/api/dsh-jev-context-gate/test');
+    assert.equal(requests.at(-1).url, '/api/dsh-smart-selector/test');
   }
 });
 
 test('changing model cancels the in-flight test and discards its late result', async () => {
   let requestSignal, resolveRequest;
-  const render = await loadComponent('JevTestPage', { fetch: (_url, request) => {
+  const render = await loadComponent('SmartSelectorTestPage', { fetch: (_url, request) => {
     requestSignal = request.signal; return new Promise(resolve => { resolveRequest = resolve; });
   } });
   const props = { model: { provider: 'fixture', model: 'old' }, onBack() {} };
@@ -101,7 +101,7 @@ test('changing model cancels the in-flight test and discards its late result', a
 
 
 test('shared model picker reports failed saves, retries atomically and leaves rules intact', async () => {
-  const render = await loadComponent('JevSettingsSection');
+  const render = await loadComponent('SmartSelectorSettingsSection');
   const value = SettingsSchema({ provider: 'old', model: 'retired', presetVersion: 1 });
   const beforeRules = JSON.stringify(value.rules);
   let rejectSave = true;
@@ -127,7 +127,7 @@ test('shared model picker reports failed saves, retries atomically and leaves ru
 });
 
 test('missing shared picker leaves rule editing available and gives an upgrade action', async () => {
-  const render = await loadComponent('JevSettingsSection');
+  const render = await loadComponent('SmartSelectorSettingsSection');
   const value = SettingsSchema({ presetVersion: 1 });
   const tree = render({ scope: { subscribe: () => () => {}, getSnapshot: () => ({ value, status: 'ready', writable: true }) },
     loadCatalog: async () => ({ groups: [], failures: [] }), modelPicker: { subscribe: () => () => {}, getSnapshot: () => undefined } });

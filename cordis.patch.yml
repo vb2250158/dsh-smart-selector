@@ -1,4 +1,4 @@
 - insert:
     - id: dsh-jev-context-gate
-      name: dsh-jev-context-gate
+      name: dsh-smart-selector
       inject: [settings, llm, skills, tools, tokenMeter, credentials]

@@ -6,7 +6,7 @@ export function createDecisionClient(ctx, fetchImpl = fetch) {
   return ({ settings, state, questions, signal }, operation = {}) => {
     const timed = (phase, task) => {
       const timing = ctx.get?.('chatStageTiming');
-      return timing?.run?.({ plugin: 'dsh-jev-context-gate', operation: phase }, task) ?? task();
+      return timing?.run?.({ plugin: 'dsh-smart-selector', operation: phase }, task) ?? task();
     };
     const task = async () => {
       const config = settings.decisionApi;
@@ -31,7 +31,7 @@ export function createDecisionClient(ctx, fetchImpl = fetch) {
       return result;
     };
     const timing = ctx.get?.('chatStageTiming');
-    return timing?.request?.({ plugin: 'dsh-jev-context-gate', ...operation, provider: settings.provider, model: settings.model,
+    return timing?.request?.({ plugin: 'dsh-smart-selector', ...operation, provider: settings.provider, model: settings.model,
       transport: 'native-decisions' }, task) ?? task();
   };
 }

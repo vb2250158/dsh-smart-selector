@@ -7,7 +7,7 @@ test('trusted script can read a file and generate title and labels without chang
   const rule = { ...defaultRules[0], questionSource: 'script',
     questionScript: "const fs = await import('node:fs/promises'); const name = await fs.readFile('package.json', 'utf8'); return { title: '包名是 ' + JSON.parse(name).name + ' 吗？', options: options.map(x => ({ ...x, label: x.label + '（动态）' })) };" };
   const generated = await generateQuestion(rule, '用户输入');
-  assert.match(generated.question, /dsh-jev-context-gate/);
+  assert.match(generated.question, /dsh-smart-selector/);
   assert.match(generated.options[0].label, /动态/);
   assert.equal(generated.options[0].action.text, rule.options[0].action.text);
 });

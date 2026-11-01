@@ -1,18 +1,18 @@
 import * as React from 'react'
 import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
 import { modeForModel, unsupportedModelReason } from '../mode.mjs'
-import styles from './JevSettingsSection.module.css'
+import styles from './SmartSelectorSettingsSection.module.css'
 import { QuestionTypePicker, type QuestionType } from './QuestionTypePicker.tsx'
 
 type ChoiceResult = { questionType: QuestionType; noul?: number; score?: number; mode: string; model: string; question: string; selected: string; confidence: number; confidenceKind: string; options: { id: string; label: string; probability: number }[]; durationMs: number }
 
-export type JevTestPageProps = {
+export type SmartSelectorTestPageProps = {
   model?: { provider: string; model: string }
   onBack: () => void
 }
 
 /** One disposable typed decision test, separate from the persisted rule editor. */
-export function JevTestPage({ model, onBack }: JevTestPageProps): React.ReactNode {
+export function SmartSelectorTestPage({ model, onBack }: SmartSelectorTestPageProps): React.ReactNode {
   const [state, setState] = React.useState('')
   const [questionType, setQuestionType] = React.useState<QuestionType>('choice')
   const [question, setQuestion] = React.useState('')
@@ -46,7 +46,7 @@ export function JevTestPage({ model, onBack }: JevTestPageProps): React.ReactNod
     setTesting(true)
     setResult(undefined)
     setError(undefined)
-    void fetch('/api/dsh-jev-context-gate/test', {
+    void fetch('/api/dsh-smart-selector/test', {
       signal: controller.current.signal, method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ state, question, options, questionType }),
     }).then(async response => {

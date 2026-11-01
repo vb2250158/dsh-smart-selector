@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Smart rules",
-    "description": "Check context against tasks and evidence and manage preflight rules."
+    "title": "Smart selector",
+    "description": "Use models to judge input, select content and execute configured actions."
   }
 }

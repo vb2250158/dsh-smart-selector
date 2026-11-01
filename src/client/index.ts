@@ -5,14 +5,15 @@ import type {} from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 import type { ModelCatalog } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ModelPickerService } from 'dsh-codex-model-selector/model-picker'
-import { JevSettingsSection, type ModelPickerSource, type Settings } from './JevSettingsSection.tsx'
+import { SmartSelectorSettingsSection, type ModelPickerSource, type Settings } from './SmartSelectorSettingsSection.tsx'
 import { createSettingsForm } from './settings-form.mjs'
+import { CONFIG_ENTRY_ID } from '../identity.mjs'
 
 export const inject = ['slots', 'configForms', 'remote', 'remote.session']
 
 export function apply(ctx: ClientContext): void {
   // Rule migration callbacks are executable code and cannot cross the JSON settings transport.
-  const scope = createSettingsForm(ctx.configForms.get<Settings>('dsh-jev-context-gate'), ctx.configForms.describe())
+  const scope = createSettingsForm(ctx.configForms.get<Settings>(CONFIG_ENTRY_ID), ctx.configForms.describe())
   const loadCatalog = async (): Promise<ModelCatalog> => {
     const response = await ctx.remote.session.modelCatalog()
     if (!response.ok) throw new Error(`${response.error.code}: ${response.error.message}`)
@@ -33,7 +34,7 @@ export function apply(ctx: ClientContext): void {
   })
   ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({
     name: 'plugins.bundle.config',
-    key: 'dsh-jev-context-gate',
+    key: 'dsh-smart-selector',
     inject: () => ({ scope, loadCatalog, modelPicker }),
-  }, JevSettingsSection))
+  }, SmartSelectorSettingsSection))
 }

@@ -3,14 +3,14 @@ import { Button, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { CatalogPickerProps } from 'dsh-codex-model-selector/model-picker'
 import type { ModelCatalog } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import styles from './JevSettingsSection.module.css'
+import styles from './SmartSelectorSettingsSection.module.css'
 import { modeForModel, unsupportedModelReason } from '../mode.mjs'
 import { decisionModelGroups, selectionPatch } from '../model-selection.mjs'
 import { validateRules } from '../policy.mjs'
 import { groupRulePresets } from '../settings.mjs'
-import { JevTestPage } from './JevTestPage.tsx'
-import { JevRuleEditor } from './JevRuleEditor.tsx'
-import type { DraftRule, Rule } from './JevRuleEditor.tsx'
+import { SmartSelectorTestPage } from './SmartSelectorTestPage.tsx'
+import { SmartSelectorRuleEditor } from './SmartSelectorRuleEditor.tsx'
+import type { DraftRule, Rule } from './SmartSelectorRuleEditor.tsx'
 
 export type Settings = { enabled: boolean; provider: string; model: string; decisionApi: { enabled: boolean; model: string; timeoutMs: number }; messageModel: { provider: string; model: string }; nativeJev: boolean; beforeEnabled: boolean; afterEnabled: boolean; maxContextCharacters: number; maxCorrections: number; presetVersion: number; rules: Rule[] }
 export type ModelPickerSource = {
@@ -18,7 +18,7 @@ export type ModelPickerSource = {
   getSnapshot: () => React.ComponentType<CatalogPickerProps> | undefined
 }
 type Injected = { scope: ConfigForm<Settings>; loadCatalog: () => Promise<ModelCatalog>; modelPicker: ModelPickerSource }
-export type JevSettingsSectionProps = Partial<Injected> & { close?: () => void }
+export type SmartSelectorSettingsSectionProps = Partial<Injected> & { close?: () => void }
 
 const toDraft = (rules: Rule[]): DraftRule[] =>
   validateRules(rules).map(({ threshold, ...rule }) => ({ ...rule, thresholdPercent: String(Math.round(threshold * 100)) }))
@@ -61,8 +61,8 @@ function validateDraft(rules: DraftRule[]): Rule[] {
   })
 }
 
-export function JevSettingsSection(props: JevSettingsSectionProps): React.ReactNode {
-  if (!props.scope || !props.loadCatalog || !props.modelPicker) return <p role="alert">智能规则设置服务未注入。</p>
+export function SmartSelectorSettingsSection(props: SmartSelectorSettingsSectionProps): React.ReactNode {
+  if (!props.scope || !props.loadCatalog || !props.modelPicker) return <p role="alert">智能选择器设置服务未注入。</p>
   return <Loaded scope={props.scope} loadCatalog={props.loadCatalog} modelPicker={props.modelPicker} />
 }
 
@@ -175,17 +175,17 @@ function Loaded({ scope, loadCatalog, modelPicker }: Injected): React.ReactNode 
       return false
     } finally { savingRef.current = false; setSaving(false) }
   }
-  if (page === 'test') return <JevTestPage model={current} onBack={() => setPage('rules')} />
+  if (page === 'test') return <SmartSelectorTestPage model={current} onBack={() => setPage('rules')} />
   return <section className={styles.section}>
     <header className={styles.pageHeader}>
-      <div><h2>智能规则配置</h2></div>
+      <div><h2>智能选择器配置</h2></div>
       <div className={styles.headerActions}>{current && <span className={current.enabled ? styles.statusOn : styles.statusOff}>{current.enabled ? '已启用' : '未启用'}</span>}<Button variant="primary" size="sm" disabled={saving} onClick={() => setPage('test')}>打开测试页面</Button></div>
     </header>
     {snapshot.status !== 'ready' || !current ? <p role="status">{snapshot.status === 'loading' ? '正在读取设置…' : '设置不可用，无法读取或保存。'}</p> : <>
       {!snapshot.writable && <p role="status">当前设置只读，无法保存修改。</p>}
       <div className={styles.panel}>
         <div className={styles.sectionHeading}><h3>运行设置</h3></div>
-        <div className={styles.row}><span>启用智能规则</span><Switch checked={current.enabled} disabled={!writable} label="启用智能规则" onChange={enabled => patch({ enabled })} /></div>
+        <div className={styles.row}><span>启用智能选择器</span><Switch checked={current.enabled} disabled={!writable} label="启用智能选择器" onChange={enabled => patch({ enabled })} /></div>
         <div className={styles.modelField}><span>判定模型</span>
           {ModelPicker ? <ModelPicker groups={groups} current={current.provider && current.model ? { provider: current.provider, model: current.model } : null}
             locked={!writable} select={selected => patch(selectionPatch(current, selected))} load={refreshCatalog}
@@ -214,7 +214,7 @@ function Loaded({ scope, loadCatalog, modelPicker }: Injected): React.ReactNode 
           <Button variant="primary" size="sm" disabled={!writable || !dirty || changedElsewhere} onClick={() => { void saveRules() }}>保存规则</Button>
         </div>
         <div className={styles.ruleList}>{(draftRules ?? toDraft(current.rules)).map(rule =>
-          <JevRuleEditor key={rule.id} rule={rule} editing={editingRule?.id === rule.id} writable={writable} saving={saving} canSave={writable && dirty && !changedElsewhere}
+          <SmartSelectorRuleEditor key={rule.id} rule={rule} editing={editingRule?.id === rule.id} writable={writable} saving={saving} canSave={writable && dirty && !changedElsewhere}
             error={editingRule?.id === rule.id ? rulesError ?? saveError : undefined}
             update={next => updateRule(rule.id, next)}
             remove={() => { setDraftRules(rules => rules?.filter(item => item.id !== rule.id) ?? null); setEditingRule(null) }}

@@ -13,6 +13,6 @@ test('optional timing labels identify the rule without changing the provider req
   const withTiming = createTimedModelStream({ get: () => ({ stream(label, create) { labels.push(label); return create(); } }), llm });
   assert.strictEqual(withTiming(options, operation), result);
   assert.ok(routed.every(value => value === options));
-  assert.deepEqual(labels, [{ plugin: 'dsh-jev-context-gate', ...operation }]);
+  assert.deepEqual(labels, [{ plugin: 'dsh-smart-selector', ...operation }]);
   assert.doesNotMatch(JSON.stringify(labels), /private-input|messages/);
 });

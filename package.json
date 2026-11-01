@@ -1,7 +1,7 @@
 {
-  "name": "dsh-jev-context-gate",
-  "version": "0.1.45",
-  "description": "Data-driven preflight and evidence-aware context gates for DeepSeek Harness",
+  "name": "dsh-smart-selector",
+  "version": "0.2.0",
+  "description": "Model-driven selection, event judgement and configurable actions for DeepSeek Harness",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -52,9 +52,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vb2250158/dsh-jev-context-gate.git"
+    "url": "git+https://github.com/vb2250158/dsh-smart-selector.git"
   },
-  "homepage": "https://github.com/vb2250158/dsh-jev-context-gate#readme",
+  "homepage": "https://github.com/vb2250158/dsh-smart-selector#readme",
   "scripts": {
     "prepare": "node scripts/build.mjs",
     "test": "node --test tests/*.test.mjs",
@@ -88,7 +88,9 @@
     "@deepseek-ai/schemastery": "3.18.5-alpha.1"
   },
   "peerDependenciesMeta": {
-    "dsh-codex-model-selector": { "optional": true }
+    "dsh-codex-model-selector": {
+      "optional": true
+    }
   },
   "icon": "./icon.svg"
 }

@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Button, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
-import styles from './JevSettingsSection.module.css'
+import styles from './SmartSelectorSettingsSection.module.css'
 
 export type QuestionType = 'choice' | 'noul' | 'score'
 const types: { id: QuestionType; label: string }[] = [

@@ -19,9 +19,10 @@ import { toolRuleInput, matchesTool, composeGroupMessage } from './tool-automati
 import { createCapabilityRegistry, actionParameter } from './capability-registry.mjs';
 import { dispatchToTool, dispatchToRabi } from './dispatch-adapters.mjs';
 import { createTimedModelStream } from './timed-model.mjs';
+import { PLUGIN_NAME, CONFIG_ENTRY_ID } from './identity.mjs';
 export { Config, DEFAULT_SETTINGS, SETTINGS_NAMESPACE, SettingsSchema } from './settings.mjs';
 export { evaluatePolicy } from './policy.mjs';
-export const name = 'dsh-jev-context-gate';
+export const name = PLUGIN_NAME;
 export const inject = ['settings', 'llm', 'skills', 'tools', 'tokenMeter', 'credentials'];
 const contextMessage = (text, source = { kind: `plugin:${name}`, form: 'instructions' }) => createUserMessage({ content: [{ type: 'text', text }], source });
 const selectedText = (rule, selected) => {
@@ -51,7 +52,7 @@ export function apply(ctx, config = {}) {
         rules.push(await (ctx.get('chatStageTiming')?.run?.({ plugin: name, operation: 'question-provider' }, prepare) ?? prepare()));
         inputs[rule.id] = input;
       } catch (error) {
-        ctx.logger.warn(`Jev question script failed for ${rule.id}: ${error instanceof Error ? error.message : 'unknown error'}`);
+        ctx.logger.warn(`Smart Selector question script failed for ${rule.id}: ${error instanceof Error ? error.message : 'unknown error'}`);
       }
     }
     if (!rules.length) return { context: '' };
@@ -70,7 +71,7 @@ export function apply(ctx, config = {}) {
   const dispatch = async ({ action, agent, eventText, signal, eventId, ruleId, onDone }) => {
     const adapterKey = actionParameter(action, 'adapter');
     const adapter = capabilities.adapter(adapterKey);
-    if (!adapter) throw new Error(`Jev action adapter ${adapterKey || '(empty)'} is unavailable`);
+    if (!adapter) throw new Error(`Smart Selector action adapter ${adapterKey || '(empty)'} is unavailable`);
     const message = await composeGroupMessage({ ctx, settings: scope.get(), instruction: action.text, eventText, signal, createMessage: contextMessage });
     return adapter({ ctx, agent, action, message, signal, internalCalls, eventId, ruleId, settings: scope.get(), logger: ctx.logger,
       pollSignal: pollController.signal, createMessage: contextMessage, onDone });
@@ -80,8 +81,8 @@ export function apply(ctx, config = {}) {
     registerAdapter: (definition, handler) => capabilities.registerAdapter(definition, handler),
     events: () => capabilities.events(), adapters: () => capabilities.adapters(),
     emit: async ({ key, id, agent, parameters = {}, signal = new AbortController().signal }) => {
-      if (!capabilities.event(key)) throw new Error(`Jev event ${key} has no registered source`);
-      if (typeof id !== 'string' || !id.trim() || !agent?.session?.id) throw new TypeError('Jev external event needs a stable ID and agent session');
+      if (!capabilities.event(key)) throw new Error(`Smart Selector event ${key} has no registered source`);
+      if (typeof id !== 'string' || !id.trim() || !agent?.session?.id) throw new TypeError('Smart Selector external event needs a stable ID and agent session');
       const settings = scope.get();
       if (!settings.enabled) return { decisions: [], context: '', parameters: { ...parameters }, selections: [] };
       const rules = validateRules(settings.rules).filter(rule => rule.enabled && rule.phase === 'external' && rule.eventKey === key);
@@ -110,6 +111,8 @@ export function apply(ctx, config = {}) {
       return { ...result, parameters: updatedParameters, selections };
     },
   };
+  ctx.effect(() => ctx.provide('smartSelector', service));
+  // Existing event providers retain the same service and disposer semantics during migration.
   ctx.effect(() => ctx.provide('jev', service));
   ctx.on('tools/pre-execute', async (exec, next) => {
     const settings = scope.get();
@@ -122,7 +125,7 @@ export function apply(ctx, config = {}) {
       if (block) return { kind: 'deny', reason: block.action.text };
     } catch (error) {
       exec.signal.throwIfAborted();
-      ctx.logger.warn(`Jev tool-before judgement unavailable for ${exec.name}: ${error instanceof Error ? error.message : String(error)}`);
+      ctx.logger.warn(`Smart Selector tool-before judgement unavailable for ${exec.name}: ${error instanceof Error ? error.message : String(error)}`);
     }
     return next();
   }, { global: true });
@@ -155,41 +158,39 @@ export function apply(ctx, config = {}) {
       if (contexts.length) return { ...decision, additionalContexts: [...(decision.additionalContexts ?? []), ...contexts] };
     } catch (error) {
       exec.signal.throwIfAborted();
-      ctx.logger.warn(`Jev tool-after action failed for ${exec.name}: ${error instanceof Error ? error.message : String(error)}`);
+      ctx.logger.warn(`Smart Selector tool-after action failed for ${exec.name}: ${error instanceof Error ? error.message : String(error)}`);
     }
     return decision;
   }, { global: true });
   ctx.inject(['webServer'], web => {
-    web.effect(() => web.webServer.register({
-      kind: 'exact', path: '/api/dsh-jev-context-gate/test',
+    const routes = [{ suffix: 'test',
       handler: createTestHandler((input, signal) => testChoice({
         settings: scope.get(), ...input, signal,
         stream: timedStream, createMessage: contextMessage,
       })),
-    }));
-    web.effect(() => web.webServer.register({
-      kind: 'exact', path: '/api/dsh-jev-context-gate/tools',
+    }, { suffix: 'tools',
       handler: (_request, response) => {
         response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
         response.end(JSON.stringify({ tools: ctx.tools.schemas().map(tool => tool.name).sort() }));
       },
-    }));
-    web.effect(() => web.webServer.register({
-      kind: 'exact', path: '/api/dsh-jev-context-gate/capabilities',
+    }, { suffix: 'capabilities',
       handler: (_request, response) => {
         response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
         const toolNames = new Set(ctx.tools.schemas().map(tool => tool.name));
         response.end(JSON.stringify({ events: capabilities.events(), adapters: capabilities.adapters().map(adapter => ({ ...adapter,
           available: adapter.key !== 'rabi' || toolNames.has('rabiroute_agent_send') && toolNames.has('rabiroute_manager_api') })) }));
       },
-    }));
+    }];
+    for (const prefix of [PLUGIN_NAME, CONFIG_ENTRY_ID]) for (const route of routes) {
+      web.effect(() => web.webServer.register({ kind: 'exact', path: `/api/${prefix}/${route.suffix}`, handler: route.handler }));
+    }
   });
   ctx.on('agent/pre-step', async ({ agent, turn, step, signal }, next) => {
     let decision = await next();
     const onSelection = selection => recordCatalogSelection(agent.session, { turn, step }, selection,
-      () => ctx.logger.warn('Jev candidate selection details could not be recorded'));
+      () => ctx.logger.warn('Smart Selector candidate selection details could not be recorded'));
     const timed = (operation, task) => ctx.get('agentPreStepTiming')?.run({ agent, turn, step },
-      { plugin: 'dsh-jev-context-gate', operation }, task) ?? task();
+      { plugin: 'dsh-smart-selector', operation }, task) ?? task();
     return timed('input-rules', async () => {
       const settings = scope.get();
       if (decision.kind !== 'enter' || !settings.enabled || signal.aborted) return decision;
@@ -204,7 +205,7 @@ export function apply(ctx, config = {}) {
         try {
           const eventParameters = { skills: catalog.source.entries };
           const candidates = eventParameters[rule.candidateParameterKey];
-          if (!Array.isArray(candidates)) throw new Error(`Jev event parameter ${rule.candidateParameterKey} is unavailable`);
+          if (!Array.isArray(candidates)) throw new Error(`Smart Selector event parameter ${rule.candidateParameterKey} is unavailable`);
           const prepared = await timed('question-provider', () => generateQuestion(rule, input, signal, candidates));
           const entries = await rankCatalog({ settings, rule: prepared, entries: candidates, input, signal,
             stream: timedStream, createMessage: contextMessage, onSelection });
@@ -218,7 +219,7 @@ export function apply(ctx, config = {}) {
           decision = { ...decision, messages };
         } catch (error) {
           signal.throwIfAborted();
-          ctx.logger.warn(`Jev Skill catalog rule ${rule.id} failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+          ctx.logger.warn(`Smart Selector Skill catalog rule ${rule.id} failed: ${error instanceof Error ? error.message : 'unknown error'}`);
         }
       }
       const selectionRules = validateRules(settings.rules).filter(rule => rule.enabled && rule.phase === 'before' && rule.candidateSource !== 'none');
@@ -239,7 +240,7 @@ export function apply(ctx, config = {}) {
           decision = { ...decision, messages };
         } catch (error) {
           signal.throwIfAborted();
-          ctx.logger.warn(`Jev candidate rule ${rule.id} failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+          ctx.logger.warn(`Smart Selector candidate rule ${rule.id} failed: ${error instanceof Error ? error.message : 'unknown error'}`);
         }
       }
       if (!settings.rules.some(rule => rule.enabled && rule.phase === 'before' && (rule.candidateSource ?? 'none') === 'none')) return decision;
@@ -250,7 +251,7 @@ export function apply(ctx, config = {}) {
           try { snapshot = await timed('skill-snapshot', () => ctx.skills.snapshot({ cwd: agent.session.header.cwd, signal, scope: agent })); }
           catch (error) {
             signal.throwIfAborted();
-            ctx.logger.warn(`Jev skill catalog unavailable: ${error instanceof Error ? error.message : 'unknown error'}`);
+            ctx.logger.warn(`Smart Selector skill catalog unavailable: ${error instanceof Error ? error.message : 'unknown error'}`);
             snapshot = { skills: [], complete: false };
           }
         }
@@ -269,7 +270,7 @@ export function apply(ctx, config = {}) {
             : undefined,
         });
         for (const outcome of selected.outcomes.filter(row => ['skill-unavailable', 'budget-exceeded', 'skill-judgement-unavailable'].includes(row.status)))
-          ctx.logger.warn(`Jev skill injection ${outcome.status} for rule ${outcome.ruleId}.`);
+          ctx.logger.warn(`Smart Selector skill injection ${outcome.status} for rule ${outcome.ruleId}.`);
         const additions = [...(result.context ? [contextMessage(result.context)] : []), ...selected.messages];
         if (!additions.length) return decision;
         const messages = [...decision.messages];
@@ -278,7 +279,7 @@ export function apply(ctx, config = {}) {
         return { ...decision, messages };
       } catch {
         signal.throwIfAborted();
-        ctx.logger.warn('Jev user-message judgement unavailable; no context injected. Check model configuration and test page.');
+        ctx.logger.warn('Smart Selector user-message judgement unavailable; no context injected. Check model configuration and test page.');
         return decision;
       }
     });
@@ -311,7 +312,7 @@ export function apply(ctx, config = {}) {
           }
           return;
         }
-      } catch (error) { ctx.logger.warn(`Jev tool-result judgement unavailable; original stream preserved: ${error instanceof Error ? error.message : 'unknown error'}`); }
+      } catch (error) { ctx.logger.warn(`Smart Selector tool-result judgement unavailable; original stream preserved: ${error instanceof Error ? error.message : 'unknown error'}`); }
       for (const chunk of chunks) yield chunk;
     })();
   });

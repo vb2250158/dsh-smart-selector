@@ -2,11 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSettingsForm } from '../src/client/settings-form.mjs';
 import { Config, SettingsSchema } from '../src/settings.mjs';
+import { CONFIG_ENTRY_ID } from '../src/identity.mjs';
 
 test('JSON settings retain rule validation and shared revision-fenced writes', async () => {
   const value = JSON.parse(JSON.stringify(Config(undefined).get()));
   const wireSchema = JSON.parse(JSON.stringify(SettingsSchema.toJSON()));
-  let document = { view: { namespaces: [{ ns: 'dsh-jev-context-gate', value, schema: wireSchema }] } };
+  let document = { view: { namespaces: [{ ns: CONFIG_ENTRY_ID, value, schema: wireSchema }] } };
   const calls = [];
   const listeners = new Set();
   const form = {
@@ -25,7 +26,7 @@ test('JSON settings retain rule validation and shared revision-fenced writes', a
   const ops = [{ op: 'set', path: ['enabled'], value: false }];
   assert.equal(await settings.mutate(ops, 3), true);
   assert.deepEqual(calls, [{ ops, revision: 3 }]);
-  document = { view: { namespaces: [{ ns: 'dsh-jev-context-gate', value: { ...value, rules: [value.rules[0], value.rules[0]] } }] } };
+  document = { view: { namespaces: [{ ns: CONFIG_ENTRY_ID, value: { ...value, rules: [value.rules[0], value.rules[0]] } }] } };
   assert.equal(settings.getSnapshot().status, 'unavailable');
   assert.equal(settings.getSnapshot().value, undefined);
   const off = settings.subscribe(() => {});
@@ -37,6 +38,6 @@ test('JSON settings retain rule validation and shared revision-fenced writes', a
 test('remote memory preferences remain unavailable to Host rule editing', () => {
   const base = { status: 'unavailable', mode: 'memory', writable: false };
   const form = { getSnapshot: () => base };
-  const mirror = { getSnapshot: () => ({ view: { namespaces: [{ ns: 'dsh-jev-context-gate', value: Config(undefined).get() }] } }) };
+  const mirror = { getSnapshot: () => ({ view: { namespaces: [{ ns: CONFIG_ENTRY_ID, value: Config(undefined).get() }] } }) };
   assert.equal(createSettingsForm(form, mirror).getSnapshot().status, 'unavailable');
 });

@@ -1,10 +1,12 @@
-# dsh-jev-context-gate
+# 智能选择器（Smart Selector）
+
+`dsh-smart-selector` 是 `dsh-jev-context-gate` 的后续插件。通过独立判定模型判断事件输入、筛选候选并执行已配置的动作，支持 JEV、GPT 等原生决策模型和普通聊天模型。从旧插件升级前阅读[迁移说明](docs/upgrade-0.2.0.md)。
 
 This release requires DSH 0.2.1-alpha.1 or a compatible 0.2 release. See [compatibility details](docs/dsh-0.2-compatibility.md).
 
 [English](README_en.md) | 简体中文
 
-DSH 的智能规则插件（包名 `dsh-jev-context-gate`）。插件 → 智能规则 → 配置可配置事件判断、内容筛选和动作执行；DSH 0.2 的配置按插件入口 ID `dsh-jev-context-gate` 读写。选择独立判定模型后，按事件读取待判断内容、按配置题型判定，并执行获选选项配置的行为。普通模型使用 LLM JSON 估计选项概率；选择受支持的 OpenRouter 原生概率模型后，规则判断、候选筛选和测试页直接调用 Decisions API；普通模型继续用于需要生成文本的动作。
+DSH 的智能选择器插件（包名 `dsh-smart-selector`）。插件 → 智能选择器 → 配置可配置事件判断、内容筛选和动作执行；DSH 0.2 的配置按插件入口 ID `dsh-jev-context-gate` 读写。选择独立判定模型后，按事件读取待判断内容、按配置题型判定，并执行获选选项配置的行为。普通模型使用 LLM JSON 估计选项概率；选择受支持的 OpenRouter 原生概率模型后，规则判断、候选筛选和测试页直接调用 Decisions API；普通模型继续用于需要生成文本的动作。
 
 ## 三种题型与模型
 
@@ -22,11 +24,11 @@ OpenRouter 的原生目录覆盖多个厂商，完整型号、特殊协议与核
 
 ## 原生判定配置
 
-在「插件 → 智能规则 → 判定模型」使用与聊天会话共用的模型选择器，支持常用模型、搜索和提供商分组。普通模型标注“兼容模式”，原生决策模型使用 Decisions API；选择只保存智能规则的判定模型，不切换聊天模型。
+在「插件 → 智能选择器 → 判定模型」使用与聊天会话共用的模型选择器，支持常用模型、搜索和提供商分组。普通模型标注“兼容模式”，原生决策模型使用 Decisions API；选择只保存智能选择器的判定模型，不切换聊天模型。
 
-设置界面需要启用「模型与推理选择」插件（`dsh-codex-model-selector`）0.1.18 或以上；升级时先更新该插件，再更新智能规则并刷新页面。已有规则无需手动迁移。
+设置界面需要启用「模型与推理选择」插件（`dsh-codex-model-selector`）0.1.18 或以上；升级时先更新该插件，再更新智能选择器并刷新页面。已有规则无需手动迁移。
 
-在「设置 → 模型 → 添加模型提供商」选择 OpenRouter，填写 API 密钥；已有 OpenRouter 时直接编辑。智能规则复用该提供商的 `apiKeyEnv` 凭据引用及 API 地址，每次调用读取最新配置，无需单独配置 Jev 密钥。`provider` 和 `model` 仍是智能规则的独立判定模型选择；`decisionApi.timeoutMs` 配置超时。旧版 `decisionApi.apiKeyRef` 已停用，升级及跨电脑同步见[0.1.45 升级说明](docs/upgrade-0.1.45.md)。0.1.38–0.1.39 的开关配置仍迁移为 OpenRouter 模型选择，原普通模型保留在 `messageModel`，用于文本生成动作；首次直接使用原生模型且未配置普通文本模型时，文本生成动作明确报错。
+在「设置 → 模型 → 添加模型提供商」选择 OpenRouter，填写 API 密钥；已有 OpenRouter 时直接编辑。智能选择器复用该提供商的 `apiKeyEnv` 凭据引用及 API 地址，每次调用读取最新配置，无需单独配置 Jev 密钥。`provider` 和 `model` 仍是智能选择器的独立判定模型选择；`decisionApi.timeoutMs` 配置超时。旧版 `decisionApi.apiKeyRef` 已停用，升级及跨电脑同步见[0.1.45 升级说明](docs/upgrade-0.1.45.md)。0.1.38–0.1.39 的开关配置仍迁移为 OpenRouter 模型选择，原普通模型保留在 `messageModel`，用于文本生成动作；首次直接使用原生模型且未配置普通文本模型时，文本生成动作明确报错。
 
 测试页展示实际模型、题型、概率、判断概率或期望分以及耗时。服务未返回置信度时明确标注分布集中度，缺失必需概率则报错；不会伪造概率或自动改走其他付费请求。安装统计插件后记录原生请求及凭据读取、响应头等待、响应体读取、校验四个阶段；响应头等待包含网络与服务端等待，不能单独当作推理耗时。
 
@@ -44,7 +46,7 @@ OpenRouter 的原生目录覆盖多个厂商，完整型号、特殊协议与核
 
 请求在实际路由、完整输入和工具定义入日志后执行策略，再检查压缩压力。阈值统一取窗口的 `thresholdRatio` 与扣除输出预留、`headroomRatio` 后预算的较小值；压缩目标与保留尾部按剩余消息预算的 `targetRatio`、`retainRatio` 计算，适用于所有模型。默认比例依次为 `0.8`、`0.06`、`0.4`、`0.16`；状态预览上限为 12000 字符，目录描述上限为 96 字符，数组预览 3 项，详情页 4096 字符。这些值均可通过插件配置的 `contextPolicy` 修改。输出预留仍采用适配器声明的有效值，不假定服务端执行了本地输出上限。
 
-启用前必须应用 [宿主补丁](patches/2026-10-10-request-context-policy.patch) 并重建涉及的 Host 包。补丁增加完整请求检查入口、固定本次路由容量、压缩目标策略和快照原始版本识别；策略实现由本插件维护。另一台电脑先核对 [补丁说明](patches/README.md) 的基线与依赖补丁，运行 `git apply --check` 后应用；上游更新后重新检查。缺少补丁时开启策略会报错；设置 `contextPolicy.enabled: false` 可保留已有智能规则。插件卸载撤销工具和监听，已记录的替换继续参与会话回放。
+启用前必须应用 [宿主补丁](patches/2026-10-10-request-context-policy.patch) 并重建涉及的 Host 包。补丁增加完整请求检查入口、固定本次路由容量、压缩目标策略和快照原始版本识别；策略实现由本插件维护。另一台电脑先核对 [补丁说明](patches/README.md) 的基线与依赖补丁，运行 `git apply --check` 后应用；上游更新后重新检查。缺少补丁时开启策略会报错；设置 `contextPolicy.enabled: false` 可保留已有智能选择器。插件卸载撤销工具和监听，已记录的替换继续参与会话回放。
 
 ## 0.1.22
 
@@ -56,7 +58,7 @@ OpenRouter 的原生目录覆盖多个厂商，完整型号、特殊协议与核
 
 “调用外部动作”属于具体选项，动作参数可增删，参数 `key` 与显示名称分别保存。内置 `tool` 适配器可调用任何已安装工具，并把生成消息写入指定参数；`arg.*` 参数会作为该工具的其他参数。`rabi` 只是一个可选适配器，渠道、对象类型、对象 ID、Route ID、等待回复及检查间隔都在动作参数中，可改为个人或其他受 Rabi 支持的目标；未安装 Rabi 时不影响其他规则。旧工作群配置在读取时迁移到选项动作，不再由规则顶层的群字段决定行为。两条预置规则的事件、监听工具、题目、选项及动作均可编辑。
 
-扩展插件可通过 `ctx.inject(['jev'], scope => scope.jev.registerEvent({ key, display, parameters }))` 注册事件，随后调用 `scope.jev.emit({ key, id, agent, parameters, signal })`；注册返回撤销函数。动作适配器通过 `scope.jev.registerAdapter({ key, display, parameters }, handler)` 注册。参数定义使用稳定 `key` 和独立 `display`，可附 `required`、`kind` 和 `defaultValue`。当前版本没有内置群消息接收事件；要监听群，须由消息来源插件注册并投递该事件。等待回复仍由当前进程持有，重启后不会自动恢复。
+扩展插件可通过 `ctx.inject(['smartSelector'], scope => scope.smartSelector.registerEvent({ key, display, parameters }))` 注册事件，随后调用 `scope.smartSelector.emit({ key, id, agent, parameters, signal })`；注册返回撤销函数。动作适配器通过 `scope.smartSelector.registerAdapter({ key, display, parameters }, handler)` 注册。参数定义使用稳定 `key` 和独立 `display`，可附 `required`、`kind` 和 `defaultValue`。当前版本没有内置群消息接收事件；要监听群，须由消息来源插件注册并投递该事件。等待回复仍由当前进程持有，重启后不会自动恢复。
 
 扩展事件可选择“事件参数作为选项”：提供者传入字符串数组或 `{ id, text }` 数组，规则按当前判断内容一次评分，并用阈值、前／后 N 项等配置筛选。`emit()` 返回处理后的 `parameters` 和逐规则入选项 `selections`；提供者负责将返回值应用到它拥有的事件，例如替换待注入目录。没有固定的渠道或候选总数，实际数量受模型输入输出容量和 64000 字候选内容上限约束。
 
@@ -150,7 +152,7 @@ MIT
 
 ## Plugin display metadata
 
-The plugin list shows **Smart rules** in English and **智能规则** in Chinese, following the DSH interface language. `locale/en.json` and `locale/zh.json` provide the title and description; `icon.svg` supplies self-contained artwork. The package exports and publishes these resources. The icon is adapted from Lucide; see [ICON_LICENSE.txt](ICON_LICENSE.txt).
+The plugin list shows **Smart selector** in English and **智能选择器** in Chinese, following the DSH interface language. `locale/en.json` and `locale/zh.json` provide the title and description; `icon.svg` supplies self-contained artwork. The package exports and publishes these resources. The icon is adapted from Lucide; see [ICON_LICENSE.txt](ICON_LICENSE.txt).
 
 ## 插件设置入口
 

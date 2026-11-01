@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Button, Input, Menu, Modal, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import { EVENT_DEFINITIONS, optionParametersForEvent } from '../event-parameters.mjs'
-import styles from './JevSettingsSection.module.css'
+import styles from './SmartSelectorSettingsSection.module.css'
 import { QuestionTypePicker, type QuestionType } from './QuestionTypePicker.tsx'
 
 export type Action = { type: 'none' | 'inject-context' | 'inject-skill' | 'append-reminder' | 'skip-skill' | 'keep-top-skills' | 'inject-selected-candidates' | 'deny-tool' | 'dispatch'; text: string; params?: { key: string; display: string; value: string }[] }
@@ -46,7 +46,7 @@ function Choice({ label, value, choices, disabled, onSelect }: {
 }
 
 /** Edit one rule in a dialog while its card shows the configured title and description. */
-export function JevRuleEditor({ rule, editing, writable, saving, canSave, error, update, remove, openEditor, closeEditor, saveEditor }: {
+export function SmartSelectorRuleEditor({ rule, editing, writable, saving, canSave, error, update, remove, openEditor, closeEditor, saveEditor }: {
   rule: DraftRule; editing: boolean; writable: boolean; saving: boolean; canSave: boolean; error?: string
   update: (rule: DraftRule) => void; remove: () => void; openEditor: () => void; closeEditor: () => void; saveEditor: () => void
 }): React.ReactNode {
@@ -57,7 +57,7 @@ export function JevRuleEditor({ rule, editing, writable, saving, canSave, error,
   React.useEffect(() => {
     if (!editing || !rule.phase.startsWith('tool-')) return
     let active = true
-    void fetch('/api/dsh-jev-context-gate/tools').then(response => response.json()).then((value: { tools?: string[] }) => {
+    void fetch('/api/dsh-smart-selector/tools').then(response => response.json()).then((value: { tools?: string[] }) => {
       if (active && Array.isArray(value.tools)) setToolNames(value.tools)
     }).catch(() => { if (active) setToolNames([]) })
     return () => { active = false }
@@ -65,7 +65,7 @@ export function JevRuleEditor({ rule, editing, writable, saving, canSave, error,
   React.useEffect(() => {
     if (!editing) return
     let active = true
-    void fetch('/api/dsh-jev-context-gate/capabilities').then(response => response.json()).then(value => {
+    void fetch('/api/dsh-smart-selector/capabilities').then(response => response.json()).then(value => {
       if (active && Array.isArray(value.events) && Array.isArray(value.adapters)) setCapabilities(value)
     }).catch(() => { if (active) setCapabilities({ events: [], adapters: [] }) })
     return () => { active = false }

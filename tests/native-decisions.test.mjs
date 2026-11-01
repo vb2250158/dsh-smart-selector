@@ -21,7 +21,7 @@ test('native probability calls provide separate timing labels without retaining 
   const result = await decide({ settings, state: 'private-input', questions: { check: choice } }, operation);
   assert.equal(count, 1);
   assert.equal(result.answers.check.choice, 'yes');
-  assert.deepEqual(labels, [{ plugin: 'dsh-jev-context-gate', ...operation, provider: settings.provider,
+  assert.deepEqual(labels, [{ plugin: 'dsh-smart-selector', ...operation, provider: settings.provider,
     model: settings.model, transport: 'native-decisions' }]);
   assert.doesNotMatch(JSON.stringify(labels), /private-input|fixture-key|questions|criteria/);
   const failure = new Error('fixture transport failure');

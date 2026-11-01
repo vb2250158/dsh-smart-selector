@@ -1,8 +1,10 @@
-# dsh-jev-context-gate
+# Smart Selector
+
+`dsh-smart-selector` succeeds `dsh-jev-context-gate`. It uses an independent model to judge event inputs, select candidates and execute configured actions. Supported backends include native decision models from JEV, GPT and other families, plus ordinary chat models. Read the [migration guide](docs/upgrade-0.2.0_en.md) before replacing the old plugin.
 
 English | [简体中文](README.md)
 
-Smart Rules for DSH (package `dsh-jev-context-gate`). Plugins → Smart rules configures event judgements, content selection, and actions; DSH 0.2 reads and writes configuration by the plugin entry ID `dsh-jev-context-gate`. A separate judge model reads selected event content, answers the configured question type, and activates the action owned by the selected option. Ordinary models use LLM JSON estimates. Select a supported native OpenRouter decision model in the same dropdown to use the Decisions API. Ordinary models remain responsible for actions that generate text.
+Smart Selector for DSH (package `dsh-smart-selector`). Plugins → Smart selector configures event judgements, content selection, and actions; DSH 0.2 reads and writes configuration by the plugin entry ID `dsh-jev-context-gate`. A separate judge model reads selected event content, answers the configured question type, and activates the action owned by the selected option. Ordinary models use LLM JSON estimates. Select a supported native OpenRouter decision model in the same dropdown to use the Decisions API. Ordinary models remain responsible for actions that generate text.
 
 ## Three question types
 
@@ -22,11 +24,11 @@ Native request diagnostics include credential resolution, response-header wait, 
 
 ## Native decision configuration
 
-Plugins → Smart rules uses the same model chooser as chat, including recent models, search, and provider groups. Ordinary models carry a compatibility-mode label; native decision models use the Decisions API. Selection saves the independent decision model and preserves the chat model.
+Plugins → Smart selector uses the same model chooser as chat, including recent models, search, and provider groups. Ordinary models carry a compatibility-mode label; native decision models use the Decisions API. Selection saves the independent decision model and preserves the chat model.
 
-The settings interface requires Model & reasoning selector (`dsh-codex-model-selector`) 0.1.18 or later. Upgrade that plugin before Smart rules, then refresh the page. Existing rules require no manual migration.
+The settings interface requires Model & reasoning selector (`dsh-codex-model-selector`) 0.1.18 or later. Upgrade that plugin before Smart selector, then refresh the page. Existing rules require no manual migration.
 
-Add OpenRouter under Settings → Models → Add model provider and enter its API key, or edit the existing provider. Smart rules read that provider's `apiKeyEnv` credential reference and API URL on each call; there is no separate Jev key. The independent `provider`/`model` decision selection and `decisionApi.timeoutMs` remain. The former `decisionApi.apiKeyRef` is retired; see the [0.1.45 upgrade guide](docs/upgrade-0.1.45.md). Settings from 0.1.38–0.1.39 still migrate to the OpenRouter selection and retain the previous ordinary model in `messageModel` for text-generation actions. A text-generation action fails explicitly if native selection has no saved ordinary text model.
+Add OpenRouter under Settings → Models → Add model provider and enter its API key, or edit the existing provider. Smart selector read that provider's `apiKeyEnv` credential reference and API URL on each call; there is no separate Jev key. The independent `provider`/`model` decision selection and `decisionApi.timeoutMs` remain. The former `decisionApi.apiKeyRef` is retired; see the [0.1.45 upgrade guide](docs/upgrade-0.1.45.md). Settings from 0.1.38–0.1.39 still migrate to the OpenRouter selection and retain the previous ordinary model in `messageModel` for text-generation actions. A text-generation action fails explicitly if native selection has no saved ordinary text model.
 
 The selected question type controls native and compatibility requests. Failed or refused requests and invalid probabilities do not activate actions or silently fall back. Native calls participate in the optional statistics service.
 
@@ -56,7 +58,7 @@ Events, judged input, and action targets are configured separately. An “Extern
 
 “Dispatch external action” belongs to a selected option. Its parameters have independently saved keys and display names. The built-in `tool` adapter can call any installed tool, placing the composed message in a configured argument and passing `arg.*` values as additional arguments. `rabi` is an optional adapter: channel, recipient kind and ID, Route ID, reply wait, and polling interval are option parameters. Rabi can be absent without preventing other rules from loading. Previously saved group fields migrate to option parameters on read. Both supplied rules can change their event, watched tool, question, options, and action.
 
-An extension plugin registers an event with `ctx.inject(['jev'], scope => scope.jev.registerEvent({ key, display, parameters }))`, then emits it using `scope.jev.emit({ key, id, agent, parameters, signal })`; registration returns a disposer. Adapters register with `scope.jev.registerAdapter({ key, display, parameters }, handler)`. Parameter definitions have stable `key` and independent `display` fields, with optional `required`, `kind`, and `defaultValue`. This release does not ship an inbound group-message source. A message-source plugin must register and emit that event. Reply polling remains process-local and does not resume after restart.
+An extension plugin registers an event with `ctx.inject(['smartSelector'], scope => scope.smartSelector.registerEvent({ key, display, parameters }))`, then emits it using `scope.smartSelector.emit({ key, id, agent, parameters, signal })`; registration returns a disposer. Adapters register with `scope.smartSelector.registerAdapter({ key, display, parameters }, handler)`. Parameter definitions have stable `key` and independent `display` fields, with optional `required`, `kind`, and `defaultValue`. This release does not ship an inbound group-message source. A message-source plugin must register and emit that event. Reply polling remains process-local and does not resume after restart.
 
 An external-event rule can use an event parameter as its options. The provider supplies an array of strings or `{ id, text }` entries; one model request scores them all, and the saved threshold or top/bottom count selects the result. `emit()` returns processed `parameters` and per-rule `selections`. The event provider applies the returned data to the event it owns. Candidate text is limited to 64,000 characters; the model's input and output capacity sets the practical item count.
 
@@ -142,7 +144,7 @@ MIT
 
 ## Plugin display metadata
 
-The plugin list shows **Smart rules** in English and **智能规则** in Chinese, following the DSH interface language. `locale/en.json` and `locale/zh.json` provide the title and description; `icon.svg` supplies self-contained artwork. The package exports and publishes these resources. The icon is adapted from Lucide; see [ICON_LICENSE.txt](ICON_LICENSE.txt).
+The plugin list shows **Smart selector** in English and **智能选择器** in Chinese, following the DSH interface language. `locale/en.json` and `locale/zh.json` provide the title and description; `icon.svg` supplies self-contained artwork. The package exports and publishes these resources. The icon is adapted from Lucide; see [ICON_LICENSE.txt](ICON_LICENSE.txt).
 
 ## Plugin configuration
 
