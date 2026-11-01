@@ -1,0 +1,4 @@
+[
+  { "url": "https://router.example/api/alpha/decisions", "authorization": "Bearer synthetic-SHARED_ROUTER_KEY" },
+  { "url": "https://openrouter.ai/api/alpha/decisions", "authorization": "Bearer synthetic-ROTATED_KEY" }
+]

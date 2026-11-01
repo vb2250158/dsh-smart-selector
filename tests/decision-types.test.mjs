@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { providerFixture } from './provider-fixture.mjs';
 import assert from 'node:assert/strict';
 import { testChoice } from '../src/choice-test.mjs';
 import { judge } from '../src/judge.mjs';
@@ -15,7 +16,7 @@ const answers = {
 };
 function transport(native, answer) {
   const stream = async function* () { yield { type: 'text-delta', text: JSON.stringify({ answers: { choice: answer } }) }; yield { type: 'finish', reason: { kind: 'stop' } }; };
-  stream.decide = createDecisionClient({ credentials: { resolve: async () => ({ value: 'fixture' }) } }, async () => Response.json({ model: 'fixture-served', answers: { choice: answer } }));
+  stream.decide = createDecisionClient({ ...providerFixture(), credentials: { resolve: async () => ({ value: 'fixture' }) } }, async () => Response.json({ model: 'fixture-served', answers: { choice: answer } }));
   return { stream, settings: native ? SettingsSchema({ decisionApi: { enabled: true } }) : { provider: 'test', model: 'ordinary' } };
 }
 for (const native of [false, true]) for (const questionType of ['choice', 'noul', 'score']) test(`${native ? 'native' : 'JSON'} executes ${questionType} with shared output semantics`, async () => {
@@ -72,7 +73,7 @@ test('cancellation between question batches stops later requests', async () => {
 for (const questionType of ['choice', 'noul', 'score']) test(`ScaleDown translates ${questionType} state and criteria before the native request`, async () => {
   let payload;
   const stream = () => { throw new Error('must not use chat'); };
-  stream.decide = createDecisionClient({ credentials: { resolve: async () => ({ value: 'fixture' }) } }, async (_url, request) => {
+  stream.decide = createDecisionClient({ ...providerFixture(), credentials: { resolve: async () => ({ value: 'fixture' }) } }, async (_url, request) => {
     payload = JSON.parse(request.body);
     return Response.json({ model: 'scaledown/classify-1', answers: { choice: answers[questionType] } });
   });

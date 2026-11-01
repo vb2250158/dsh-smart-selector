@@ -12,7 +12,7 @@ import { JevTestPage } from './JevTestPage.tsx'
 import { JevRuleEditor } from './JevRuleEditor.tsx'
 import type { DraftRule, Rule } from './JevRuleEditor.tsx'
 
-export type Settings = { enabled: boolean; provider: string; model: string; decisionApi: { enabled: boolean; model: string; apiKeyRef: string; timeoutMs: number }; messageModel: { provider: string; model: string }; nativeJev: boolean; beforeEnabled: boolean; afterEnabled: boolean; maxContextCharacters: number; maxCorrections: number; presetVersion: number; rules: Rule[] }
+export type Settings = { enabled: boolean; provider: string; model: string; decisionApi: { enabled: boolean; model: string; timeoutMs: number }; messageModel: { provider: string; model: string }; nativeJev: boolean; beforeEnabled: boolean; afterEnabled: boolean; maxContextCharacters: number; maxCorrections: number; presetVersion: number; rules: Rule[] }
 export type ModelPickerSource = {
   subscribe: (listener: () => void) => () => void
   getSnapshot: () => React.ComponentType<CatalogPickerProps> | undefined

@@ -1,4 +1,5 @@
 import { isNativeSelection } from './mode.mjs';
+import { resolveDecisionConnection } from './provider-connection.mjs';
 
 /** OpenRouter's native typed-decision transport; secrets are resolved on each call. */
 export function createDecisionClient(ctx, fetchImpl = fetch) {
@@ -10,13 +11,12 @@ export function createDecisionClient(ctx, fetchImpl = fetch) {
     const task = async () => {
       const config = settings.decisionApi;
       if (!isNativeSelection(settings)) throw new Error('Select an OpenRouter native decision model');
-      const credential = await timed('decision-credentials', () => ctx.credentials.resolve(config.apiKeyRef));
-      if (!credential?.value) throw new Error(`Missing OpenRouter credential: ${config.apiKeyRef}`);
+      const connection = await timed('decision-credentials', () => resolveDecisionConnection(ctx, settings.provider));
       const combined = signal ? AbortSignal.any([signal, AbortSignal.timeout(config.timeoutMs)]) : AbortSignal.timeout(config.timeoutMs);
       combined.throwIfAborted();
-      const response = await timed('decision-response-headers', () => fetchImpl('https://openrouter.ai/api/alpha/decisions', {
+      const response = await timed('decision-response-headers', () => fetchImpl(connection.endpoint, {
         method: 'POST', redirect: 'error', signal: combined,
-        headers: { Authorization: `Bearer ${credential.value}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${connection.apiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: settings.model, state, questions }),
       }));
       // Provider error bodies can contain request data; expose only the HTTP status.

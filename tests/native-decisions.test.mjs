@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { providerFixture } from './provider-fixture.mjs';
 import { createDecisionClient } from '../src/decisions.mjs';
 import { SettingsSchema, defaultRules } from '../src/settings.mjs';
 import { judge } from '../src/judge.mjs';
@@ -10,7 +11,7 @@ const settings = SettingsSchema({ enabled: true, decisionApi: { enabled: true },
 const choice = { type: 'choice', instructions: 'Which?', criteria: { yes: 'Yes', no: 'No' } };
 const answer = { type: 'choice', choice: 'yes', probabilities: { yes: 0.9, no: 0.1 }, confidence: 0.8 };
 const wire = answers => ({ model: 'typesafe/jev-1.13-20260917', answers, usage: { input_tokens: 42, output_tokens: 0 } });
-const context = resolve => ({ credentials: { resolve: resolve ?? (async () => ({ value: 'fixture-key' })) } });
+const context = resolve => ({ ...providerFixture(), credentials: { resolve: resolve ?? (async () => ({ value: 'fixture-key' })) } });
 
 test('native probability calls provide separate timing labels without retaining state or credentials', async () => {
   const labels = [], ctx = { ...context(), get: () => ({ request(label, task) { labels.push(label); return task(); } }) };
@@ -56,7 +57,7 @@ test('HTTP failures, refusals and malformed probabilities cannot trigger decisio
     assert.equal(error.message, 'OpenRouter Decisions HTTP 402');
     return true;
   });
-  await assert.rejects(createDecisionClient(context(async () => undefined), async () => { throw new Error('must not fetch'); })(options), /Missing OpenRouter credential/);
+  await assert.rejects(createDecisionClient(context(async () => undefined), async () => { throw new Error('must not fetch'); })(options), /OpenRouter.*凭据/);
   await assert.rejects(createDecisionClient(context(), async () => { throw new Error('must not fetch'); })({ ...options, signal: AbortSignal.abort() }), { name: 'AbortError' });
 });
 
@@ -100,9 +101,9 @@ test('native test output preserves the provider confidence and served model', as
   });
 });
 
-test('native configuration validates the credential reference and model while retaining ordinary defaults', () => {
+test('native configuration retires the separate credential reference and retains model defaults', () => {
   assert.equal(SettingsSchema({}).decisionApi.enabled, false);
-  assert.throws(() => SettingsSchema({ decisionApi: { apiKeyRef: 'not a reference' } }));
+  assert.equal(Object.hasOwn(SettingsSchema({ decisionApi: { apiKeyRef: 'retired' } }).decisionApi, 'apiKeyRef'), false);
   assert.throws(() => SettingsSchema({ decisionApi: { model: 'ordinary-chat-model' } }));
 });
 

@@ -1,5 +1,10 @@
 # 更新记录
 
+## 0.1.45
+
+- Jev 与其他原生判定模型复用「设置 → 模型」的 OpenRouter 提供商、API 地址及密钥；移除独立凭据字段，保留判定选择和规则行为。
+- Native decisions use the OpenRouter profile and credential edited on Settings → Models. Retire the separate credential field; preserve decision selection and rule behavior.
+
 ## 0.1.44
 
 - 判定模型使用聊天会话同一套模型选择器，复用常用模型、搜索和提供商分组；选择结果只保存到智能规则。

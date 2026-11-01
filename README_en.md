@@ -26,7 +26,7 @@ Plugins → Smart rules uses the same model chooser as chat, including recent mo
 
 The settings interface requires Model & reasoning selector (`dsh-codex-model-selector`) 0.1.18 or later. Upgrade that plugin before Smart rules, then refresh the page. Existing rules require no manual migration.
 
-Configure `OPENROUTER_API_KEY` in the DSH credential store. The `provider` and `model` fields own the active decision selection; `decisionApi.apiKeyRef` and `decisionApi.timeoutMs` configure credentials and timeout. Settings from 0.1.38–0.1.39 migrate to the OpenRouter selection and retain the previous ordinary model in `messageModel` for text-generation actions. Choosing another ordinary model updates that text model. A text-generation action fails explicitly if native selection has no saved ordinary text model.
+Add OpenRouter under Settings → Models → Add model provider and enter its API key, or edit the existing provider. Smart rules read that provider's `apiKeyEnv` credential reference and API URL on each call; there is no separate Jev key. The independent `provider`/`model` decision selection and `decisionApi.timeoutMs` remain. The former `decisionApi.apiKeyRef` is retired; see the [0.1.45 upgrade guide](docs/upgrade-0.1.45.md). Settings from 0.1.38–0.1.39 still migrate to the OpenRouter selection and retain the previous ordinary model in `messageModel` for text-generation actions. A text-generation action fails explicitly if native selection has no saved ordinary text model.
 
 The selected question type controls native and compatibility requests. Failed or refused requests and invalid probabilities do not activate actions or silently fall back. Native calls participate in the optional statistics service.
 
