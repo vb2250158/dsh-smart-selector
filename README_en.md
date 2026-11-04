@@ -32,6 +32,12 @@ Add OpenRouter under Settings → Models → Add model provider and enter its AP
 
 The selected question type controls native and compatibility requests. Failed or refused requests and invalid probabilities do not activate actions or silently fall back. Native calls participate in the optional statistics service.
 
+## Input budgets and answer streaming
+
+Candidate input sources, character budgets, thresholds and selection counts remain configurable. Current-context input reserves the latest real user text first, fills the remaining budget from recent context, and restores message order without additionally excluding instructions or runtime context. Separators count toward the budget. Overlong user text retains the existing tail policy; custom text and zero budgets keep their existing branches. Skill catalogs remain excluded from judgement context.
+
+Tool facts read canonical Core `role: tool` messages, including call identity, text and `isError`, and retain nested tool-result support. Only results following the latest real user message are included. When the current user turn has tool results and enabled after rules, tool-fact judgement runs alongside the main answer. Original chunks reach the Host immediately; configured reminders precede the original finish. Calls without tool facts and auxiliary calls retain their original path. Ordinary judgement failure preserves the answer; cancellation, upstream failure and consumer closure settle auxiliary work without reporting partial failures as successful answers. Auxiliary judgement may already have started when the main stream fails; cancellation settles that request without an automatic retry. Core signals and adapter timeouts still own the original transport; this plugin cannot force an uncooperative upstream to terminate.
+
 ## Context lifecycle policy
 
 Version 0.1.37 optionally labels each auxiliary model call for Chat Enhancement 0.3.77 statistics. Expand individual calls to distinguish candidate selection, input classification, skill injection, tool checks and response checks, including configured rule names and IDs. Labels stay outside provider requests and exclude questions, inputs, candidate content and responses. Without the statistics plugin, model calls use their original entry.
@@ -133,6 +139,8 @@ The worker thread has local Node permissions, so configure only trusted code. Sc
 npm run check
 npm pack --dry-run
 ```
+
+With a built supported DSH host, set `DSH_SOURCE_ROOT` to its root and run `node tests/host-lifecycle.mjs`. This keyless Core integration regression uses temporary data and synthetic models to cover tool-followup streaming, model failure, user cancellation and long-context input budgets. CLI/Web startup and installed-runtime acceptance are separate checks.
 
 Publish source and tag, verify the remote SHA, update the pinned SHA and version in private `plugins.json`, Import, restart DSH, and verify the installed package and browser interactions. Do not install via `link:`, `file:`, or `workspace:`.
 

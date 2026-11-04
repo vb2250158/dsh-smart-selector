@@ -7,6 +7,77 @@ const rule = defaultRules.find(row => row.id === 'skill-trimming');
 const entries = Array.from({ length: 12 }, (_, index) => ({ name: `skill-${index}`, description: `用途 ${index}` }));
 const signal = new AbortController().signal;
 const createMessage = text => ({ content: [{ type: 'text', text }] });
+const message = (text, kind = 'user') => ({ source: { kind }, content: [{ type: 'text', text }] });
+const visible = events => ({ session: { surface: { nodes: events.map((_, index) => index) }, eventAt: index => events[index] } });
+
+test('current context reserves the current user input before later long instructions and runtime messages', () => {
+  const pending = [message('current task'), message('instruction '.repeat(100), 'agent-instructions'),
+    message('runtime '.repeat(100), 'runtime-context')];
+  const input = catalogInput(rule, visible([]), pending, 64);
+  assert.equal(input, `current task\n${pending[2].content[0].text.slice(-51)}`);
+  assert.equal(input.length, 64);
+});
+
+test('current context fills its remaining budget with recent context in original order', () => {
+  const agent = visible([{ type: 'user/message', data: message('old task') },
+    { type: 'assistant/message', data: { message: message('previous answer', 'model') } }]);
+  const pending = [message('continue'), message('environment', 'runtime-context')];
+  assert.equal(catalogInput(rule, agent, pending, 200), 'old task\nprevious answer\ncontinue\nenvironment');
+  const budget = 'answer\ncontinue\nenvironment'.length;
+  assert.equal(catalogInput(rule, agent, pending, budget), 'answer\ncontinue\nenvironment');
+});
+
+test('the most recent real user can come from visible history or pending input', () => {
+  const agent = visible([{ type: 'user/message', data: message('surface user') },
+    { type: 'assistant/message', data: { message: message('old response', 'model') } }]);
+  const later = message('later instructions '.repeat(20), 'agent-instructions');
+  assert.match(catalogInput(rule, agent, [later], 40), /^surface user\n/);
+  assert.equal(catalogInput({ input: 'latest-user-message' }, agent, [later], 40), 'surface user');
+  assert.equal(catalogInput({ input: 'latest-user-message' }, agent, [message('pending user'), later], 40), 'pending user');
+  assert.match(catalogInput(rule, agent, [message('pending user'), later], 40), /^pending user\n/);
+});
+
+test('current context retains tool text, includes control messages and excludes skill catalogs', () => {
+  const tool = { content: [{ type: 'tool-result', content: [{ type: 'text', text: 'tool text' }, { type: 'image', data: 'ignored' }] }] };
+  const agent = visible([{ type: 'user/message', data: message('request') },
+    { type: 'tool/result', data: { message: tool } },
+    { type: 'user/message', data: message('surface catalog', 'skill-catalog') }]);
+  const pending = [message('instructions', 'agent-instructions'), message('runtime', 'runtime-context'), message('pending catalog', 'skill-catalog')];
+  assert.equal(catalogInput(rule, agent, pending, 100), 'request\ntool text\ninstructions\nruntime');
+});
+
+test('custom text, zero budget, empty input and overlong user text keep their existing policies', () => {
+  const agent = visible([]);
+  assert.equal(catalogInput({ input: 'custom-text', customInput: 'custom contents' }, agent, [], 0), 'custom contents');
+  assert.equal(catalogInput(rule, agent, [message('request')], 0), '');
+  assert.equal(catalogInput(rule, agent, [], 5), '');
+  assert.equal(catalogInput(rule, agent, [message('abcdefgh'), message('later', 'runtime-context')], 4), 'efgh');
+  assert.equal(catalogInput({ input: 'latest-user-message' }, agent, [message('abcdefgh')], 4), 'efgh');
+  assert.equal(catalogInput({ input: 'latest-user-message' }, agent, [message('instructions', 'agent-instructions')], 20), '');
+  assert.equal(catalogInput(rule, agent, [message('old user'), message(''), message('runtime', 'runtime-context')], 7), 'runtime');
+});
+
+test('without nonempty current user text the historical tail includes separator boundaries exactly', () => {
+  const pending = [message('older', 'agent-instructions'), message('catalog', 'skill-catalog'),
+    message('recent', 'runtime-context'), message('')];
+  for (let budget = 1; budget <= 15; budget += 1) {
+    assert.equal(catalogInput(rule, visible([]), pending, budget), 'older\nrecent'.slice(-budget), `budget ${budget}`);
+  }
+  for (let budget = 1; budget <= 15; budget += 1) {
+    const input = catalogInput(rule, visible([]), [message('user'), message('context', 'runtime-context')], budget);
+    assert.ok(input.length <= budget, `user budget ${budget}`);
+    assert.ok(input.includes('user'.slice(-budget)), `current user budget ${budget}`);
+  }
+});
+
+test('bounded current context does not render older message bodies or read history when pending fills its budget', () => {
+  const unrenderable = { source: { kind: 'model' }, get content() { throw new Error('older body rendered'); } };
+  const agent = visible([{ type: 'assistant/message', data: { message: unrenderable } }]);
+  assert.equal(catalogInput(rule, agent, [message('request'), message('context', 'runtime-context')], 15), 'request\ncontext');
+  const unreadable = { session: { surface: { nodes: [1] }, eventAt() { throw new Error('older event read'); } } };
+  assert.equal(catalogInput(rule, unreadable, [message('long current user')], 4), 'user');
+  assert.equal(catalogInput({ input: 'latest-user-message' }, unreadable, [message('request')], 20), 'request');
+});
 
 test('Skill 裁剪 uses current visible context and rule-configured count, title and threshold', async () => {
   const agent = { session: { surface: { nodes: [1, 2] }, eventAt: seq => seq === 1

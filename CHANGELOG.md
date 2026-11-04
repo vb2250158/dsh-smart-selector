@@ -1,5 +1,15 @@
 # 更新记录
 
+## 0.2.1
+
+- 按 Core 标准 `role: tool` 消息读取工具调用 ID、正文与失败状态，同时保留嵌套工具结果表示，确保配置的后置规则实际读取当前轮工具事实。
+- Read canonical Core tool messages as well as nested tool-result blocks, preserving call identities and actual failure metadata for configured after rules.
+
+- 当前上下文的长度预算优先保留最新用户输入，再按原消息顺序补充近期上下文；输入来源、规则与阈值配置保持不变。
+- 工具后续回答即时流式输出，与独立的工具事实判定并行，在结束片段前追加原提醒；取消和插件卸载收束辅助工作，主流失败继续交给 Core 记录。
+- Current-context budgets retain the latest user input before filling recent context in its original order; existing input sources, rules and thresholds remain unchanged.
+- Stream tool-followup answers while judging tool facts in parallel, append existing reminders before the original finish, and settle auxiliary work on cancellation or unload without masking upstream failures.
+
 ## 0.2.0
 
 - Rejected settings writes remain visible failures; rule drafts are not marked saved when a Home patch or revision guard refuses the update.

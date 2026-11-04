@@ -1,0 +1,106 @@
+{
+  "completed": [
+    {
+      "type": "block-start",
+      "index": 4,
+      "blockType": "reasoning"
+    },
+    {
+      "type": "reasoning-delta",
+      "index": 4,
+      "text": "reason"
+    },
+    {
+      "type": "block-end",
+      "index": 4,
+      "block": {
+        "type": "reasoning",
+        "text": "reason"
+      }
+    },
+    {
+      "type": "block-start",
+      "index": 9,
+      "blockType": "text"
+    },
+    {
+      "type": "text-delta",
+      "index": 9,
+      "text": "answer"
+    },
+    {
+      "type": "block-end",
+      "index": 9,
+      "block": {
+        "type": "text",
+        "text": "answer"
+      }
+    },
+    {
+      "type": "usage",
+      "usage": {
+        "outputTokens": 1
+      }
+    },
+    {
+      "type": "block-start",
+      "index": 10,
+      "blockType": "text"
+    },
+    {
+      "type": "text-delta",
+      "index": 10,
+      "text": "reminder"
+    },
+    {
+      "type": "block-end",
+      "index": 10,
+      "block": {
+        "type": "text",
+        "text": "reminder"
+      }
+    },
+    {
+      "type": "finish",
+      "reason": {
+        "kind": "stop"
+      }
+    }
+  ],
+  "failures": {
+    "error": [
+      {
+        "type": "text-delta",
+        "index": 0,
+        "text": "partial"
+      },
+      {
+        "type": "finish",
+        "reason": {
+          "kind": "error",
+          "failure": {
+            "code": "FIXTURE",
+            "message": "provider failure"
+          }
+        }
+      }
+    ],
+    "aborted": [
+      {
+        "type": "text-delta",
+        "index": 0,
+        "text": "partial"
+      },
+      {
+        "type": "finish",
+        "reason": {
+          "kind": "aborted",
+          "failure": {
+            "code": "FIXTURE",
+            "message": "provider failure"
+          }
+        }
+      }
+    ]
+  }
+}

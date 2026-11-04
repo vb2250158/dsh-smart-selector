@@ -2,23 +2,57 @@ import { decideQuestions, typedQuestion } from './decision-adapter.mjs';
 import { modeForModel, isNativeSelection } from './mode.mjs';
 import { randomUUID } from 'node:crypto';
 
-/** Build the rule-selected text from visible conversation and pending step messages. */
+/**
+ * Build the configured input, reserving the latest user text before budgeting current context.
+ * @param rule The configured input source and optional literal text.
+ * @param agent Agent whose visible session events supply earlier context.
+ * @param pending Messages admitted for the next step in their original order.
+ * @param maxCharacters Character budget, including separators, for conversation sources.
+ * @returns Configured literal text or the budgeted conversation input.
+ */
 export function catalogInput(rule, agent, pending, maxCharacters) {
   if (rule.input === 'custom-text') return rule.customInput;
   if (maxCharacters === 0) return '';
-  const messages = [];
-  for (const seq of agent.session.surface.nodes) {
-    const event = agent.session.eventAt(seq);
+  let latest;
+  for (const entry of newestMessages(agent, pending)) {
+    if (entry.message.source?.kind === 'user') { latest = entry; break; }
+  }
+  const userText = latest ? textOf(latest.message).slice(-maxCharacters) : '';
+  if (rule.input === 'latest-user-message') {
+    return userText;
+  }
+  if (userText.length === maxCharacters) return userText;
+  const parts = [];
+  let remaining = maxCharacters - userText.length;
+  for (const entry of newestMessages(agent, pending)) {
+    if (userText && entry.position === latest.position) continue;
+    const text = textOf(entry.message);
+    if (!text) continue;
+    const separator = Number(parts.length > 0 || userText.length > 0);
+    const tail = text.slice(text.length - Math.min(text.length, remaining - separator));
+    parts.push({ position: entry.position, text: tail });
+    remaining -= tail.length + separator;
+    if (remaining === 0) break;
+  }
+  if (userText) {
+    const index = parts.findIndex(entry => entry.position < latest.position);
+    parts.splice(index < 0 ? parts.length : index, 0, { position: latest.position, text: userText });
+  }
+  return parts.reverse().map(entry => entry.text).join('\n');
+}
+
+/** Visit the original message set backwards without reading older event content eagerly. */
+function* newestMessages(agent, pending) {
+  const nodes = agent.session.surface.nodes;
+  for (let index = pending.length - 1; index >= 0; index -= 1) {
+    if (pending[index].source?.kind !== 'skill-catalog') yield { position: nodes.length + index, message: pending[index] };
+  }
+  for (let index = nodes.length - 1; index >= 0; index -= 1) {
+    const event = agent.session.eventAt(nodes[index]);
     const message = event?.type === 'user/message' ? event.data
       : ['assistant/message', 'tool/result'].includes(event?.type) ? event.data.message : undefined;
-    if (message && message.source?.kind !== 'skill-catalog') messages.push(message);
+    if (message && message.source?.kind !== 'skill-catalog') yield { position: index, message };
   }
-  messages.push(...pending.filter(message => message.source?.kind !== 'skill-catalog'));
-  if (rule.input === 'latest-user-message') {
-    const latest = messages.findLast(message => message.source?.kind === 'user');
-    return latest ? textOf(latest).slice(-maxCharacters) : '';
-  }
-  return messages.map(textOf).filter(Boolean).join('\n').slice(-maxCharacters);
 }
 
 function textOf(message) {

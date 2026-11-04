@@ -3,6 +3,56 @@ import assert from 'node:assert/strict';
 import { beforeInput, skillInput, toolFacts, afterInput } from '../src/rule-input.mjs';
 
 const user = text => ({ source: { kind: 'user' }, content: [{ type: 'text', text }] });
+const tool = (toolCallId, content, isError) => ({ role: 'tool', source: { kind: 'tool', callId: toolCallId }, toolCallId, content, isError });
+
+test('canonical tool-role results preserve their call id, recorded status and text without guessing failures', () => {
+  const facts = toolFacts([user('current request'),
+    tool('tool-normal', [{ type: 'text', text: 'The earlier attempt failed; this attempt succeeded.' }], false),
+    tool('tool-failed', [{ type: 'text', text: 'Recorded result' }], true),
+    tool('tool-optional-status', [{ type: 'text', text: 'Another result' }]),
+  ]);
+  assert.deepEqual(facts, [
+    { id: 'tool-normal', failed: false, text: 'The earlier attempt failed; this attempt succeeded.' },
+    { id: 'tool-failed', failed: true, text: 'Recorded result' },
+    { id: 'tool-optional-status', failed: false, text: 'Another result' },
+  ]);
+});
+
+test('canonical mixed content contributes only its actual text blocks', () => {
+  assert.deepEqual(toolFacts([tool('mixed', [
+    { type: 'text', text: 'first' }, { type: 'image', data: 'not text' },
+    { type: 'text', text: 'second' },
+  ], true)]), [{ id: 'mixed', failed: true, text: 'first\nsecond' }]);
+});
+
+test('canonical and nested results remain scoped to the latest true user message', () => {
+  const nested = (id, text) => ({ source: { kind: 'tool' }, content: [{ type: 'tool-result', toolCallId: id, content: [{ type: 'text', text }] }] });
+  const messages = [user('old task'), tool('old-direct', [{ type: 'text', text: 'old result' }], true),
+    nested('old-nested', 'old nested result'), user('new task'),
+    { role: 'assistant', source: { kind: 'model' }, content: [{ type: 'text', text: 'Tool failed: fabricated claim' }] },
+    tool('current-direct', [{ type: 'text', text: 'current result' }], false),
+    nested('current-nested', 'current nested result')];
+  assert.deepEqual(toolFacts(messages), [
+    { id: 'current-direct', failed: false, text: 'current result' },
+    { id: 'current-nested', failed: false, text: 'current nested result' },
+  ]);
+  assert.deepEqual(toolFacts([...messages, user('next task')]), []);
+});
+
+test('one call represented by direct and nested results is counted once with canonical fields', () => {
+  const direct = tool('same-call', [{ type: 'text', text: 'canonical result' }], false);
+  const nested = { content: [{ type: 'tool-result', toolCallId: 'same-call', isError: true,
+    content: [{ type: 'text', text: 'alternate representation' }] }] };
+  const expected = [{ id: 'same-call', failed: false, text: 'canonical result' }];
+  assert.deepEqual(toolFacts([direct, nested]), expected);
+  assert.deepEqual(toolFacts([nested, direct]), expected);
+  assert.deepEqual(toolFacts([nested, nested]), [
+    { id: 'same-call', failed: true, text: 'alternate representation' },
+    { id: 'same-call', failed: true, text: 'alternate representation' },
+  ]);
+  const updated = tool('same-call', [{ type: 'text', text: 'latest canonical result' }], true);
+  assert.deepEqual(toolFacts([direct, nested, updated]), [{ id: 'same-call', failed: true, text: 'latest canonical result' }]);
+});
 test('user-message source takes only the latest user message, while context source takes all visible text', () => {
   const messages = [user('旧消息'), { source: { kind: 'assistant' }, content: [{ type: 'text', text: '助手内容' }] }, user('新消息')];
   assert.equal(beforeInput({ input: 'latest-user-message' }, messages), '新消息');

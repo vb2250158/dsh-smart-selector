@@ -8,6 +8,7 @@ import { judge } from './judge.mjs';
 import { validateRules } from './policy.mjs';
 import { generateQuestion } from './question-script.mjs';
 import { beforeInput, toolFacts, afterInput, skillInput } from './rule-input.mjs';
+import { createAfterStream } from './after-stream.mjs';
 import { testChoice } from './choice-test.mjs';
 import { createTestHandler } from './test-route.mjs';
 import { resolveSkillRequests } from './skill-injection.mjs';
@@ -40,8 +41,8 @@ export function apply(ctx, config = {}) {
   const internalCalls = new Set();
   const pendingQuestions = new Set();
   const uncertainDeliveries = new Set();
-  const pollController = new AbortController();
-  ctx.effect(() => () => pollController.abort());
+  const lifecycleController = new AbortController();
+  ctx.effect(() => () => lifecycleController.abort());
   const runRules = async (settings, phase, inputFor, signal) => {
     const rules = [], inputs = {};
     for (const rule of validateRules(settings.rules).filter(row => row.enabled && row.phase === phase && row.candidateSource === 'none')) {
@@ -74,7 +75,7 @@ export function apply(ctx, config = {}) {
     if (!adapter) throw new Error(`Smart Selector action adapter ${adapterKey || '(empty)'} is unavailable`);
     const message = await composeGroupMessage({ ctx, settings: scope.get(), instruction: action.text, eventText, signal, createMessage: contextMessage });
     return adapter({ ctx, agent, action, message, signal, internalCalls, eventId, ruleId, settings: scope.get(), logger: ctx.logger,
-      pollSignal: pollController.signal, createMessage: contextMessage, onDone });
+      pollSignal: lifecycleController.signal, createMessage: contextMessage, onDone });
   };
   const service = {
     registerEvent: (definition) => capabilities.registerEvent(definition),
@@ -290,30 +291,17 @@ export function apply(ctx, config = {}) {
     if (!settings.enabled || !afterRules.length || options.purpose !== undefined) return next();
     const facts = toolFacts(options.messages);
     if (!facts.length) return next();
-    const upstream = next();
-    return (async function* () {
-      const chunks = [];
-      for await (const chunk of upstream) chunks.push(chunk);
-      try {
-        const signal = options.signal ?? new AbortController().signal;
-        const result = await runRules(settings, 'after', rule => afterInput(rule, facts), signal);
-        if (result.context) {
-          const text = result.context;
-          let inserted = false;
-          for (const chunk of chunks) {
-            if (chunk.type === 'finish' && !inserted) {
-              const index = chunks.reduce((max, row) => Math.max(max, 'index' in row ? row.index : -1), -1) + 1;
-              yield { type: 'block-start', index, blockType: 'text' };
-              yield { type: 'text-delta', index, text };
-              yield { type: 'block-end', index, block: { type: 'text', text } };
-              inserted = true;
-            }
-            yield chunk;
-          }
-          return;
-        }
-      } catch (error) { ctx.logger.warn(`Smart Selector tool-result judgement unavailable; original stream preserved: ${error instanceof Error ? error.message : 'unknown error'}`); }
-      for (const chunk of chunks) yield chunk;
-    })();
+    const signal = options.signal
+      ? AbortSignal.any([options.signal, lifecycleController.signal])
+      : lifecycleController.signal;
+    return createAfterStream({
+      createUpstream: next,
+      judge: async ownedSignal => {
+        const result = await runRules(settings, 'after', rule => afterInput(rule, facts), ownedSignal);
+        return result.context;
+      },
+      signal,
+      onJudgementError: error => ctx.logger.warn(`Smart Selector tool-result judgement unavailable; original stream preserved: ${error instanceof Error ? error.message : String(error)}`),
+    });
   });
 }

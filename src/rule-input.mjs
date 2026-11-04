@@ -27,14 +27,32 @@ export function skillInput(rule, skill, messages) {
   return '';
 }
 
-/** Preserve host tool status and tool text without extracting claims from the model's answer. */
+/**
+ * Read current-turn tool results, preferring the latest canonical tool-role message for each call.
+ * @param messages Model-visible messages, including direct tool messages or nested result blocks.
+ * @returns Tool facts with recorded status and text; canonical messages replace nested copies of their call.
+ */
 export function toolFacts(messages) {
   const lastUser = messages.findLastIndex(message => message.source?.kind === 'user');
   const currentTurn = lastUser < 0 ? messages : messages.slice(lastUser + 1);
-  return currentTurn.flatMap(message => message.content.filter(block => block.type === 'tool-result').map(block => ({
-    id: block.toolCallId, failed: block.isError === true,
-    text: block.content.filter(item => item.type === 'text').map(item => item.text).join('\n'),
-  })));
+  const canonical = new Map();
+  for (let index = 0; index < currentTurn.length; index += 1) {
+    const message = currentTurn[index];
+    if (message.role === 'tool') canonical.set(message.toolCallId, index);
+  }
+  return currentTurn.flatMap((message, index) => {
+    if (message.role === 'tool') {
+      if (canonical.get(message.toolCallId) !== index) return [];
+      return [{
+        id: message.toolCallId, failed: message.isError === true,
+        text: message.content.filter(item => item.type === 'text').map(item => item.text).join('\n'),
+      }];
+    }
+    return message.content.filter(block => block.type === 'tool-result' && !canonical.has(block.toolCallId)).map(block => ({
+      id: block.toolCallId, failed: block.isError === true,
+      text: block.content.filter(item => item.type === 'text').map(item => item.text).join('\n'),
+    }));
+  });
 }
 
 /** A custom value is literal; otherwise the actual tool records become the judgement input. */
