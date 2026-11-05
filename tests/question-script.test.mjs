@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateQuestion } from '../src/question-script.mjs';
-import { defaultRules } from '../src/settings.mjs';
+import { defaultRules } from './fixtures/rules.mjs';
 
 test('trusted script can read a file and generate title and labels without changing actions', async () => {
   const rule = { ...defaultRules[0], questionSource: 'script',

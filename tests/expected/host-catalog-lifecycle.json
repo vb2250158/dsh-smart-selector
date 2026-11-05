@@ -1,0 +1,53 @@
+{
+  "syntheticOnly": true,
+  "actualOfficialCatalogProducer": true,
+  "cases": [
+    {
+      "id": "registry-official-selector",
+      "judgeCalls": 1,
+      "publications": 1,
+      "selected": ["qa-high", "qa-rabi-plans", "qa-middle"]
+    },
+    {
+      "id": "same-raw-no-rejudge",
+      "judgeCalls": 1,
+      "publications": 1,
+      "selected": ["qa-high", "qa-rabi-plans", "qa-middle"]
+    },
+    {
+      "id": "raw-change-rejudges",
+      "judgeCalls": 2,
+      "publications": 2,
+      "selected": ["qa-high", "qa-rabi-plans", "qa-new", "qa-middle"]
+    },
+    {
+      "id": "config-change-with-pending",
+      "judgeCalls": 3,
+      "publications": 3,
+      "selected": ["qa-boundary", "qa-high", "qa-low", "qa-middle", "qa-new", "qa-rabi-low", "qa-rabi-plans", "qa-zero"]
+    },
+    {
+      "id": "no-official-pending-no-judge",
+      "judgeCalls": 3,
+      "publications": 3,
+      "selected": ["qa-boundary", "qa-high", "qa-low", "qa-middle", "qa-new", "qa-rabi-low", "qa-rabi-plans", "qa-zero"]
+    },
+    {
+      "id": "next-official-update-uses-config",
+      "judgeCalls": 4,
+      "publications": 4,
+      "selected": ["qa-high", "qa-rabi-new", "qa-rabi-plans"]
+    },
+    {
+      "id": "core-prune-restores-catalog",
+      "judgeCalls": 5,
+      "publications": 5,
+      "selected": ["qa-high", "qa-rabi-new", "qa-rabi-plans"]
+    }
+  ],
+  "pass": true,
+  "judgeCalls": 5,
+  "mainCalls": 7,
+  "providerCalls": 6,
+  "bodyLoads": 0
+}

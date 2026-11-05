@@ -1,6 +1,6 @@
 {
   "name": "dsh-smart-selector",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Model-driven selection, event judgement and configurable actions for DeepSeek Harness",
   "type": "module",
   "main": "lib/index.js",
@@ -61,7 +61,9 @@
     "build": "node scripts/build.mjs",
     "check": "node --check src/policy.mjs && npm test && npm run build"
   },
-  "dependencies": {},
+  "dependencies": {
+    "zod": "4.4.3"
+  },
   "peerDependencies": {
     "dsh-codex-model-selector": ">=0.1.18 <0.2.0",
     "@deepseek-ai/dsh-credentials": ">=0.2.1-alpha.1 <0.3.0",
@@ -81,7 +83,8 @@
     "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.1-alpha.1 <0.3.0",
     "@deepseek-ai/dsh-client-ui-session": ">=0.2.1-alpha.1 <0.3.0",
     "@deepseek-ai/dsh-client-ui-plugin-manager": ">=0.2.1-alpha.1 <0.3.0",
-    "@deepseek-ai/dsh-system-prompt": ">=0.2.1-alpha.1 <0.3.0"
+    "@deepseek-ai/dsh-system-prompt": ">=0.2.1-alpha.1 <0.3.0",
+    "@deepseek-ai/dsh-session-projection": ">=0.2.1-alpha.1 <0.3.0"
   },
   "devDependencies": {
     "esbuild": "0.25.12",

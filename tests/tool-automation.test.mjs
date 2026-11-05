@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultRules, SettingsSchema } from '../src/settings.mjs';
+import { defaultRules } from './fixtures/rules.mjs';
+import { SettingsSchema } from '../src/settings.mjs';
 import { evaluatePolicy, validateRules } from '../src/policy.mjs';
 import { matchesTool, toolRuleInput, sendGroupMessage, readGroupReply, startGroupPolling, deliveryIdFor, rabiTimeSeconds } from '../src/tool-automation.mjs';
 import { dispatchToRabi } from '../src/dispatch-adapters.mjs';

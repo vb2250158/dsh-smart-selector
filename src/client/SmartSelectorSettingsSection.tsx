@@ -7,7 +7,6 @@ import styles from './SmartSelectorSettingsSection.module.css'
 import { modeForModel, unsupportedModelReason } from '../mode.mjs'
 import { decisionModelGroups, selectionPatch } from '../model-selection.mjs'
 import { validateRules } from '../policy.mjs'
-import { groupRulePresets } from '../settings.mjs'
 import { SmartSelectorTestPage } from './SmartSelectorTestPage.tsx'
 import { SmartSelectorRuleEditor } from './SmartSelectorRuleEditor.tsx'
 import type { DraftRule, Rule } from './SmartSelectorRuleEditor.tsx'
@@ -82,16 +81,7 @@ function Loaded({ scope, loadCatalog, modelPicker }: Injected): React.ReactNode 
   const [page, setPage] = React.useState<'rules' | 'test'>('rules')
   const savingRef = React.useRef(false)
   const request = React.useRef(0)
-  const migrating = React.useRef(false)
   React.useEffect(() => () => { request.current += 1 }, [])
-  React.useEffect(() => {
-    if (!current || !snapshot.writable || current.presetVersion >= 1 || migrating.current) return
-    migrating.current = true
-    const added = groupRulePresets.filter(rule => !current.rules.some(saved => saved.id === rule.id))
-    void scope.mutate([{ op: 'set', path: ['rules'], value: [...current.rules, ...added] }, { op: 'set', path: ['presetVersion'], value: 1 }])
-      .catch((error: unknown) => setSaveError(error instanceof Error ? error.message : String(error)))
-      .finally(() => { migrating.current = false })
-  }, [current, snapshot.writable, scope])
   const writable = snapshot.writable && snapshot.status === 'ready' && current !== undefined && !saving
   const savedRules = current ? JSON.stringify(validateRules(current.rules)) : null
   const dirty = draftRules !== null && sourceRules !== null && JSON.stringify(draftRules) !== JSON.stringify(toDraft(JSON.parse(sourceRules) as Rule[]))

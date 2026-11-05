@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { resolveCandidates } from '../src/candidate-source.mjs';
 import { rankCatalog } from '../src/catalog-prune.mjs';
 import { validateRules } from '../src/policy.mjs';
-import { defaultRules } from '../src/settings.mjs';
+import { defaultRules } from './fixtures/rules.mjs';
 
 const signal = new AbortController().signal;
 const base = defaultRules[2];
@@ -117,4 +117,21 @@ test('score thresholds and bottom count select the configured subset', async () 
       rule: { ...manualRule, selectionMode, selectionValue }, entries, input: '内容', signal, createMessage, stream });
     assert.deepEqual(selected.map(row => row.description), expected);
   }
+});
+
+test('score-above 50 excludes exactly 50 and keeps every qualifying candidate beyond ten', async () => {
+  const scores = [0.49, 0.5, ...Array.from({ length: 12 }, (_, index) => 0.51 + index / 100)];
+  const entries = scores.map((_, index) => ({ name: `item-${index}`, description: `candidate ${index}` }));
+  let calls = 0;
+  const selected = await rankCatalog({ settings: { provider: 'test', model: 'ordinary' },
+    rule: { ...base, selectionMode: 'score-above', selectionValue: '50' }, entries, input: 'current task', signal, createMessage,
+    stream: async function* () {
+      calls++;
+      yield { type: 'text-delta', text: JSON.stringify(noulAnswers(scores)) };
+      yield { type: 'finish', reason: { kind: 'stop' } };
+    },
+  });
+  assert.equal(calls, 1);
+  assert.equal(selected.length, 12);
+  assert.deepEqual(selected.map(entry => entry.name), entries.slice(2).reverse().map(entry => entry.name));
 });

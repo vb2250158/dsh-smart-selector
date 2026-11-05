@@ -1,5 +1,12 @@
 # 更新记录
 
+## 0.2.2
+
+- 默认仅保留技能裁剪，使用严格大于 50/100 的分数筛选，不限制合格项数量；已有显式规则不强制迁移，设置页停止自动补工作群预置规则。
+- 沿官方目录触发和 provider 汇总顺序裁剪，复用当前仍可见的相同目录，消除完整目录与裁剪目录比较导致的重复评分。真实公布项仍完整记录，未改成隐藏完整目录或逐轮加载技能正文。
+- New defaults contain only Skill trimming with a strict score above 50/100 and no result-count cap. Preserve explicit rules and stop automatically adding group presets.
+- Preserve official provider/catalog ordering and reuse an unchanged visible pruned catalog, avoiding repeated judgement caused by full-versus-pruned catalog comparison. Published entries remain truthful; skill bodies still load on demand.
+
 ## 0.2.1
 
 - 按 Core 标准 `role: tool` 消息读取工具调用 ID、正文与失败状态，同时保留嵌套工具结果表示，确保配置的后置规则实际读取当前轮工具事实。

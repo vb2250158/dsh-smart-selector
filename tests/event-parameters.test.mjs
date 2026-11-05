@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EVENT_DEFINITIONS, optionParametersForEvent } from '../src/event-parameters.mjs';
 import { validateRules } from '../src/policy.mjs';
-import { defaultRules } from '../src/settings.mjs';
+import { defaultRules } from './fixtures/rules.mjs';
 
 test('event parameter uses a stable key and separate display text', () => {
   const parameter = optionParametersForEvent('skill-catalog')[0];

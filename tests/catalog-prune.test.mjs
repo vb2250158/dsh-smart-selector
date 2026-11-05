@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { catalogInput, rankCatalog, pruneCatalogMessage } from '../src/catalog-prune.mjs';
-import { defaultRules } from '../src/settings.mjs';
+import { defaultRules } from './fixtures/rules.mjs';
 
 const rule = defaultRules.find(row => row.id === 'skill-trimming');
 const entries = Array.from({ length: 12 }, (_, index) => ({ name: `skill-${index}`, description: `用途 ${index}` }));

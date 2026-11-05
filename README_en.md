@@ -34,6 +34,12 @@ The selected question type controls native and compatibility requests. Failed or
 
 ## Input budgets and answer streaming
 
+New configurations contain only the Skill trimming rule. It retains every candidate with a normalized score strictly above 50, without a top-N cap; top, bottom and score modes remain configurable. Existing explicit rule lists are preserved, and opening settings no longer adds group presets. See the [0.2.2 upgrade guide](docs/upgrade-0.2.2_en.md).
+
+The Skill catalog event intercepts the catalog already prepared by the official `agent/pre-step` chain. The official registry first collects providers, including Rabi, and merges the available skills; this plugin prunes that catalog before Core records it. Catalogs contain names and summaries. The official `skill` tool still loads bodies on demand. Execution follows these dependencies, without inventing a numeric event priority.
+
+Prune-only chains persist fingerprints of the official observation, effective configuration and actual published entries. When the observation is unchanged and the same pruned catalog remains visible, the plugin removes the duplicate pending catalog caused by comparing full and pruned entries, without another judgement. New user input alone does not rescore the catalog. Official catalog changes, loss of the visible catalog or missing valid metadata permit selection again. Rule and model changes are checked on the next official catalog trigger; the plugin does not create a refresh. Mixed chains that inject extra content retain their original path because those additions have separate visibility.
+
 Candidate input sources, character budgets, thresholds and selection counts remain configurable. Current-context input reserves the latest real user text first, fills the remaining budget from recent context, and restores message order without additionally excluding instructions or runtime context. Separators count toward the budget. Overlong user text retains the existing tail policy; custom text and zero budgets keep their existing branches. Skill catalogs remain excluded from judgement context.
 
 Tool facts read canonical Core `role: tool` messages, including call identity, text and `isError`, and retain nested tool-result support. Only results following the latest real user message are included. When the current user turn has tool results and enabled after rules, tool-fact judgement runs alongside the main answer. Original chunks reach the Host immediately; configured reminders precede the original finish. Calls without tool facts and auxiliary calls retain their original path. Ordinary judgement failure preserves the answer; cancellation, upstream failure and consumer closure settle auxiliary work without reporting partial failures as successful answers. Auxiliary judgement may already have started when the main stream fails; cancellation settles that request without an automatic retry. Core signals and adapter timeouts still own the original transport; this plugin cannot force an uncooperative upstream to terminate.
@@ -141,6 +147,8 @@ npm pack --dry-run
 ```
 
 With a built supported DSH host, set `DSH_SOURCE_ROOT` to its root and run `node tests/host-lifecycle.mjs`. This keyless Core integration regression uses temporary data and synthetic models to cover tool-followup streaming, model failure, user cancellation and long-context input budgets. CLI/Web startup and installed-runtime acceptance are separate checks.
+
+`node tests/host-catalog-lifecycle.mjs` runs seven catalog rounds through the actual official skill registry and tool-skill, comparing an owner-local snapshot. It covers provider merging, unchanged-catalog reuse, actual catalog changes, configuration trigger limits and recovery after the catalog leaves the visible context. Synthetic skills and models do not measure real-provider latency.
 
 Publish source and tag, verify the remote SHA, update the pinned SHA and version in private `plugins.json`, Import, restart DSH, and verify the installed package and browser interactions. Do not install via `link:`, `file:`, or `workspace:`.
 

@@ -2,7 +2,8 @@ const noulAnswers = scores => ({ answers: Object.fromEntries(Object.values(score
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createCapabilityRegistry } from '../src/capability-registry.mjs';
-import { SettingsSchema, defaultRules } from '../src/settings.mjs';
+import { defaultRules } from './fixtures/rules.mjs';
+import { SettingsSchema } from '../src/settings.mjs';
 import { judge } from '../src/judge.mjs';
 import { dispatchToTool } from '../src/dispatch-adapters.mjs';
 import { applyEventSelection, selectEventCandidates } from '../src/event-selection.mjs';

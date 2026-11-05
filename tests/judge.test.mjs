@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { judge } from '../src/judge.mjs';
-import { defaultRules } from '../src/settings.mjs';
+import { defaultRules } from './fixtures/rules.mjs';
 
 const settings = { provider: 'test', model: 'judge', maxContextCharacters: 2000, rules: [defaultRules[0]] };
 const chunks = text => async function* () { yield { type: 'text-delta', index: 0, text }; yield { type: 'finish', reason: { kind: 'stop' } } }();

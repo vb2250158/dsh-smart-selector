@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { testChoice } from '../src/choice-test.mjs';
 import { judge } from '../src/judge.mjs';
 import { rankCatalog } from '../src/catalog-prune.mjs';
-import { SettingsSchema, defaultRules } from '../src/settings.mjs';
+import { defaultRules } from './fixtures/rules.mjs';
+import { SettingsSchema } from '../src/settings.mjs';
 import { createDecisionClient, validateAnswers } from '../src/decisions.mjs';
 import { decideQuestions } from '../src/decision-adapter.mjs';
 
@@ -55,7 +56,7 @@ test('missing score probabilities and inconsistent expected values fail visibly'
 });
 
 test('old rules retain choice or independent candidate judgement and noul requires exactly two options', () => {
-  const settings = SettingsSchema({});
+  const settings = SettingsSchema({ rules: defaultRules });
   assert.equal(settings.rules[0].questionType, 'choice');
   assert.equal(settings.rules[2].questionType, 'noul');
   assert.throws(() => SettingsSchema({ rules: [{ ...defaultRules[0], questionType: 'noul', options: [...defaultRules[0].options, { id: 'extra', label: 'Extra', action: { type: 'none', text: '' } }] }] }));

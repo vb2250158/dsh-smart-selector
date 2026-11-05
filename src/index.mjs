@@ -13,6 +13,8 @@ import { testChoice } from './choice-test.mjs';
 import { createTestHandler } from './test-route.mjs';
 import { resolveSkillRequests } from './skill-injection.mjs';
 import { catalogInput, rankCatalog, pruneCatalogMessage } from './catalog-prune.mjs';
+import { catalogIdentity, canReuseCatalogProof, stampCatalog } from './catalog-lifecycle.mjs';
+import { createCatalogProjection, visibleCatalogProof } from './catalog-projection.mjs';
 import { recordCatalogSelection } from './catalog-selection-record.mjs';
 import { resolveCandidates } from './candidate-source.mjs';
 import { applyEventSelection, selectEventCandidates } from './event-selection.mjs';
@@ -22,9 +24,10 @@ import { dispatchToTool, dispatchToRabi } from './dispatch-adapters.mjs';
 import { createTimedModelStream } from './timed-model.mjs';
 import { PLUGIN_NAME, CONFIG_ENTRY_ID } from './identity.mjs';
 export { Config, DEFAULT_SETTINGS, SETTINGS_NAMESPACE, SettingsSchema } from './settings.mjs';
+
 export { evaluatePolicy } from './policy.mjs';
 export const name = PLUGIN_NAME;
-export const inject = ['settings', 'llm', 'skills', 'tools', 'tokenMeter', 'credentials'];
+export const inject = ['settings', 'llm', 'skills', 'tools', 'tokenMeter', 'credentials', 'sessionProjections'];
 const contextMessage = (text, source = { kind: `plugin:${name}`, form: 'instructions' }) => createUserMessage({ content: [{ type: 'text', text }], source });
 const selectedText = (rule, selected) => {
   const items = selected.map(entry => `- ${entry.description}`).join('\n');
@@ -32,7 +35,8 @@ const selectedText = (rule, selected) => {
     : `[${rule.title || rule.id}]\n${items}`;
 };
 
-export function apply(ctx, config = {}) {
+export async function apply(ctx, config = {}) {
+  const catalogProjection = await ctx.sessionProjections.register(createCatalogProjection());
   const timedStream = createTimedModelStream(ctx);
   const scope = { get: () => config.get() };
   installContextPolicy(ctx, () => scope.get(), { createUserMessage, createDeveloperMessage, defineTool, joinContextSections });
@@ -196,13 +200,21 @@ export function apply(ctx, config = {}) {
       const settings = scope.get();
       if (decision.kind !== 'enter' || !settings.enabled || signal.aborted) return decision;
       const catalogRules = validateRules(settings.rules).filter(rule => rule.enabled && rule.phase === 'skill-catalog');
-      for (const rule of catalogRules) {
+      const pendingCatalog = decision.messages.find(message => message.source?.kind === 'skill-catalog');
+      // Only a pruning pipeline owns exactly one durable catalog. Extra injections have separate visibility.
+      const identity = pendingCatalog && catalogRules.length && catalogRules.every(rule => rule.selectionAction === 'prune')
+        ? catalogIdentity(pendingCatalog, settings, catalogRules) : undefined;
+      const reused = identity && canReuseCatalogProof(identity,
+        visibleCatalogProof(catalogProjection.stateOf(agent.session), agent.session.surface.nodes));
+      if (reused) decision = { ...decision, messages: decision.messages.filter(message => message !== pendingCatalog) };
+      let catalogComplete = true;
+      for (const rule of reused ? [] : catalogRules) {
         const catalogIndex = decision.messages.findIndex(message => message.source?.kind === 'skill-catalog');
         if (catalogIndex < 0) break;
         const catalog = decision.messages[catalogIndex];
         if (!catalog.source.entries.length) continue;
         const input = catalogInput(rule, agent, decision.messages, settings.maxContextCharacters);
-        if (!input) continue;
+        if (!input) { catalogComplete = false; continue; }
         try {
           const eventParameters = { skills: catalog.source.entries };
           const candidates = eventParameters[rule.candidateParameterKey];
@@ -219,9 +231,15 @@ export function apply(ctx, config = {}) {
           }
           decision = { ...decision, messages };
         } catch (error) {
+          catalogComplete = false;
           signal.throwIfAborted();
           ctx.logger.warn(`Smart Selector Skill catalog rule ${rule.id} failed: ${error instanceof Error ? error.message : 'unknown error'}`);
         }
+      }
+      if (identity && !reused && catalogComplete) {
+        signal.throwIfAborted();
+        decision = { ...decision, messages: decision.messages.map(message => message.id === pendingCatalog.id
+          ? stampCatalog(message, identity) : message) };
       }
       const selectionRules = validateRules(settings.rules).filter(rule => rule.enabled && rule.phase === 'before' && rule.candidateSource !== 'none');
       for (const rule of selectionRules) {
